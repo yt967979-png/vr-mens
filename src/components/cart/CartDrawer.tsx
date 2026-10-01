@@ -4,18 +4,13 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, X, Truck, Plus, Minus, ArrowRight, AlertTriangle, Trash2 } from 'lucide-react';
+import { ShoppingBag, X, Truck, Plus, Minus, ArrowRight, AlertTriangle, Trash2, Sparkles, Tag } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
 import { getSTCourierDeliveryEstimate } from '@/lib/deliveryEstimator';
 import { getCartItemStockState, anyCartItemBlocking } from '@/lib/cartStock';
 import { imageNeedsUnoptimized } from '@/lib/productImage';
-import {
-  cartHasCombo,
-  isMoqSatisfied as checkMoqSatisfied,
-  MIN_BOOKS_PER_ORDER,
-  FREE_DELIVERY_AT_QTY,
-} from '@/lib/deliveryRules';
-import { IS_CHECKOUT_PAUSED, CHECKOUT_PAUSE_MESSAGE } from '@/lib/checkoutConstants';
+import { cartHasCombo } from '@/lib/deliveryRules';
+import { CHECKOUT_PAUSE_MESSAGE } from '@/lib/checkoutConstants';
 
 export const CartDrawer = () => {
   const {
@@ -27,6 +22,7 @@ export const CartDrawer = () => {
     removeFromCart,
     cartTotal,
     cartGrandTotal,
+    shippingFee,
     setIsCheckoutOpen,
     user,
     setIsAuthOpen,
@@ -37,16 +33,12 @@ export const CartDrawer = () => {
   } = useStore();
 
   const hasCombo = cartHasCombo(cart);
-  const totalBooks = cart.reduce((a, b) => a + Number(b.qty || 0), 0);
-  const minOrderQty = MIN_BOOKS_PER_ORDER;
-  const freeShippingQty = FREE_DELIVERY_AT_QTY;
-  const isMoqSatisfied = hasCombo || totalBooks >= minOrderQty;
-  const booksToMoq = hasCombo ? 0 : Math.max(0, minOrderQty - totalBooks);
-  const booksToFreeShipping = hasCombo ? 0 : Math.max(0, freeShippingQty - totalBooks);
-  const deliveryProgress = hasCombo ? 100 : Math.min(100, (totalBooks / freeShippingQty) * 100);
+  const totalItems = cart.reduce((a, b) => a + Number(b.qty || 0), 0);
+  const isFreeDelivery = hasCombo || cartTotal >= 999;
+  const amountToFreeShipping = Math.max(0, 999 - cartTotal);
+  const deliveryProgress = isFreeDelivery ? 100 : Math.min(100, Math.round((cartTotal / 999) * 100));
   const hasBlockingItem = anyCartItemBlocking(cart, products);
 
-  // Instant re-check the moment the drawer opens
   useEffect(() => {
     if (isCartOpen) void validateCartStock();
   }, [isCartOpen, validateCartStock]);
@@ -60,7 +52,7 @@ export const CartDrawer = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsCartOpen(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[60]"
+            className="fixed inset-0 bg-black/70 backdrop-blur-xs z-[60]"
           />
 
           <motion.div
@@ -71,61 +63,51 @@ export const CartDrawer = () => {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 240 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md bg-white z-[70] shadow-2xl flex flex-col"
+            className="fixed top-0 right-0 h-full w-full max-w-md bg-slate-900 text-white z-[70] shadow-2xl flex flex-col border-l border-slate-800"
           >
-            <div className="bg-[#001B3A] text-white p-4 flex justify-between items-center shadow-md">
-              <h3 className="font-heading font-extrabold text-base flex items-center gap-2">
+            <div className="bg-slate-950 text-white p-4 flex justify-between items-center border-b border-slate-800 shadow-md">
+              <h3 className="font-heading font-black text-base flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-amber-400" />
-                <span>Shopping Cart ({totalBooks} {totalBooks === 1 ? 'book' : 'books'})</span>
+                <span>Your Cart ({totalItems} {totalItems === 1 ? 'item' : 'items'})</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setIsCartOpen(false)}
-                className="text-slate-300 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors min-h-11 min-w-11 flex items-center justify-center cursor-pointer"
+                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors min-h-11 min-w-11 flex items-center justify-center cursor-pointer"
                 aria-label="Close cart"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Smart MOQ (4 Books) & Free Shipping (5+ Books) Tier Bar */}
-            <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-amber-50 p-3.5 border-b border-blue-100 text-xs">
+            {/* Smart Free Shipping Progress Bar */}
+            <div className="bg-slate-950/80 p-3.5 border-b border-slate-800 text-xs">
               <div className="flex items-center justify-between font-bold mb-1.5">
                 <div className="flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-[#0284c7] flex-shrink-0" />
-                  {hasCombo ? (
-                    <span className="text-emerald-700 font-extrabold flex items-center gap-1">
-                      🎉 Combo Pack: FREE Express Delivery Unlocked!
-                    </span>
-                  ) : !isMoqSatisfied ? (
-                    <span className="text-amber-800 font-extrabold">
-                      Add {booksToMoq} more {booksToMoq === 1 ? 'book' : 'books'} for Minimum Order (4 books)
-                    </span>
-                  ) : booksToFreeShipping > 0 ? (
-                    <span className="text-blue-900 font-bold">
-                      Add {booksToFreeShipping} more for <strong className="text-emerald-700">FREE Express Delivery!</strong>
+                  <Truck className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  {isFreeDelivery ? (
+                    <span className="text-emerald-400 font-extrabold flex items-center gap-1">
+                      🎉 FREE Express Delivery Unlocked!
                     </span>
                   ) : (
-                    <span className="text-emerald-700 font-extrabold flex items-center gap-1">
-                      🎉 FREE Express Delivery Unlocked!
+                    <span className="text-slate-300">
+                      Add ₹{amountToFreeShipping} more for <strong className="text-amber-400">FREE Delivery</strong>
                     </span>
                   )}
                 </div>
-                <span className="text-[11px] font-black text-slate-600 bg-white/80 px-2 py-0.5 rounded-full border border-slate-200">
-                  {hasCombo ? 'Combo Pack' : `${totalBooks}/5 Books`}
+                <span className="text-[10px] font-black text-amber-300 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                  {hasCombo ? 'Combo Free Shipping' : `₹${cartTotal} / ₹999`}
                 </span>
               </div>
-              <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden p-0.5 shadow-inner">
+              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden p-0.5 shadow-inner">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${deliveryProgress}%` }}
                   transition={{ duration: 0.4, ease: 'easeOut' }}
                   className={`h-full rounded-full transition-all ${
-                    hasCombo || totalBooks >= 5
+                    isFreeDelivery
                       ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-sm'
-                      : totalBooks >= 4
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500'
-                      : 'bg-gradient-to-r from-amber-400 to-orange-400'
+                      : 'bg-gradient-to-r from-amber-400 to-amber-500'
                   }`}
                 />
               </div>
@@ -134,96 +116,110 @@ export const CartDrawer = () => {
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {cart.length === 0 ? (
                 <div className="text-center py-16 text-slate-400">
-                  <ShoppingBag className="w-16 h-16 mx-auto mb-3 opacity-20 text-blue-600" />
-                  <h4 className="font-heading font-black text-base text-slate-700">Your cart is empty</h4>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Explore 6th-12th guide books and add items to your cart.
+                  <ShoppingBag className="w-16 h-16 mx-auto mb-3 opacity-20 text-amber-400" />
+                  <h4 className="font-heading font-black text-base text-white">Your wardrobe cart is empty</h4>
+                  <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                    Explore shirts, chinos, kurtas and 3-in-1 value combo packs to style your look.
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsCartOpen(false)}
+                    className="mt-5 px-5 py-2.5 rounded-xl bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider"
+                  >
+                    Start Shopping
+                  </button>
                 </div>
               ) : (
                 cart.map((item) => {
                   const stockState = getCartItemStockState(item, products);
-                  const itemKey = `${item.id}::${item.selectedMedium || 'default'}`;
+                  const itemKey = `${item.id}::${item.selectedSize || item.selectedMedium || 'std'}`;
                   const itemHref = `/products/${item.slug || item.id}`;
                   return (
-                    <div key={itemKey} className="flex gap-3 pb-3 border-b border-slate-100 items-center">
+                    <div key={itemKey} className="flex gap-3 pb-3 border-b border-slate-800 items-center">
                       <Link
                         href={itemHref}
                         onClick={() => setIsCartOpen(false)}
-                        className="relative w-14 h-14 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex-shrink-0 group hover:border-blue-400 transition-colors block"
+                        className="relative w-16 h-16 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden flex-shrink-0 group hover:border-amber-400 transition-colors block"
                         title={`View ${item.title}`}
                       >
                         <Image
-                          src={item.image || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80'}
+                          src={item.image || 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=400&q=80'}
                           alt={item.title}
                           fill
-                          className="object-contain p-1 group-hover:scale-105 transition-transform duration-200"
-                          sizes="56px"
+                          className="object-cover p-1 group-hover:scale-105 transition-transform duration-200 rounded-lg"
+                          sizes="64px"
                           unoptimized={imageNeedsUnoptimized(item.image || '')}
                         />
                       </Link>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <h4 className="font-heading font-bold text-xs text-[#001B3A] truncate">
+                          <h4 className="font-heading font-bold text-xs text-white truncate max-w-[190px]">
                             <Link
                               href={itemHref}
                               onClick={() => setIsCartOpen(false)}
-                              className="hover:text-blue-600 hover:underline transition-colors"
+                              className="hover:text-amber-400 transition-colors"
                               title={`View ${item.title}`}
                             >
                               {item.title}
                             </Link>
                           </h4>
-                          {item.selectedMedium && (
-                            <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 ${
-                              item.selectedMedium.toLowerCase().includes('tamil')
-                                ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                                : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
-                            }`}>
-                              {item.selectedMedium}
+                        </div>
+
+                        {/* Selected Size Badge */}
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                            <Tag className="w-2.5 h-2.5" />
+                            Size: {item.selectedSize || item.selectedMedium || 'Standard'}
+                          </span>
+                          {item.fabric && (
+                            <span className="text-[10px] font-semibold text-slate-400 hidden sm:inline">
+                              • {item.fabric}
                             </span>
                           )}
                         </div>
-                        <div className="font-extrabold text-sm text-slate-900 mt-0.5">
+
+                        <div className="font-black text-sm text-white mt-1">
                           ₹{item.price * item.qty}
-                          <span className="text-[10px] text-slate-400 font-normal ml-1">(₹{item.price} each)</span>
+                          <span className="text-[10px] text-slate-400 font-normal ml-1.5">(₹{item.price} each)</span>
                         </div>
+
                         {stockState.mediumInvalid ? (
-                          <p className="text-[10px] font-bold text-red-600 mt-1 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" /> {item.selectedMedium || 'Selected medium'} not available — remove
+                          <p className="text-[10px] font-bold text-rose-400 mt-1 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> Size not available — remove
                           </p>
                         ) : !stockState.inStock ? (
-                          <p className="text-[10px] font-bold text-red-600 mt-1 flex items-center gap-1">
+                          <p className="text-[10px] font-bold text-rose-400 mt-1 flex items-center gap-1">
                             <AlertTriangle className="w-3 h-3" /> Out of stock — remove to continue
                           </p>
                         ) : stockState.overLimit ? (
-                          <p className="text-[10px] font-bold text-amber-600 mt-1 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" /> Only {stockState.stock} available — reduce qty
+                          <p className="text-[10px] font-bold text-amber-400 mt-1 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> Only {stockState.stock} available in this size
                           </p>
                         ) : null}
+
                         <div className="flex items-center gap-2 mt-2">
                           <button
                             type="button"
-                            onClick={() => updateQty(item.id, -1, item.selectedMedium)}
-                            className="w-11 h-11 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-bold flex items-center justify-center hover:bg-slate-200 active:scale-95 transition-transform"
+                            onClick={() => updateQty(item.id, -1, item.selectedSize || item.selectedMedium)}
+                            className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 font-bold flex items-center justify-center hover:bg-slate-700 active:scale-95 transition-transform"
                             aria-label="Decrease quantity"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3 h-3" />
                           </button>
-                          <span className="text-xs font-bold text-slate-800 w-4 text-center">{item.qty}</span>
+                          <span className="text-xs font-bold text-white w-5 text-center">{item.qty}</span>
                           <button
                             type="button"
-                            onClick={() => updateQty(item.id, 1, item.selectedMedium)}
+                            onClick={() => updateQty(item.id, 1, item.selectedSize || item.selectedMedium)}
                             disabled={!stockState.inStock || stockState.atLimit}
-                            className="w-11 h-11 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-bold flex items-center justify-center hover:bg-slate-200 active:scale-95 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 font-bold flex items-center justify-center hover:bg-slate-700 active:scale-95 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
                             aria-label="Increase quantity"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3 h-3" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => removeFromCart(item.id, item.selectedMedium)}
-                            className="w-11 h-11 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors ml-auto cursor-pointer touch-manipulation"
+                            onClick={() => removeFromCart(item.id, item.selectedSize || item.selectedMedium)}
+                            className="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 flex items-center justify-center transition-colors ml-auto cursor-pointer"
                             aria-label={`Remove ${item.title} from cart`}
                             title="Remove from cart"
                           >
@@ -239,48 +235,44 @@ export const CartDrawer = () => {
 
             {cart.length > 0 && (
               <div
-                className="bg-slate-50 border-t border-slate-200 p-4 space-y-3 shadow-inner"
+                className="bg-slate-950 border-t border-slate-800 p-4 space-y-3 shadow-inner"
                 style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
               >
-                <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-2.5 flex items-center gap-2 text-xs text-emerald-800 font-extrabold">
-                  <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-2.5 flex items-center gap-2 text-xs text-emerald-400 font-bold">
+                  <Truck className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>
-                    ST Courier Express: Arriving by{' '}
-                    {getSTCourierDeliveryEstimate('Tamil Nadu').formattedDate} before 11 PM
+                    ST Courier Delivery: Est. arrival by{' '}
+                    {getSTCourierDeliveryEstimate('Tamil Nadu').formattedDate}
                   </span>
                 </div>
 
-                <div className="flex justify-between text-xs font-bold pt-1 text-slate-600">
-                  <span>Subtotal ({totalBooks} books)</span>
+                <div className="flex justify-between text-xs font-semibold text-slate-300">
+                  <span>Subtotal ({totalItems} items)</span>
                   <span>₹{cartTotal}</span>
                 </div>
-                <div className="flex justify-between text-xs font-bold text-slate-600">
-                  <span>Shipping Fee</span>
-                  <span>{totalBooks >= 5 ? <strong className="text-emerald-600">FREE</strong> : totalBooks >= 4 ? '₹150' : 'Calculated at checkout'}</span>
+                <div className="flex justify-between text-xs font-semibold text-slate-300">
+                  <span>Delivery Fee</span>
+                  <span>{isFreeDelivery ? <strong className="text-emerald-400">FREE</strong> : `₹${shippingFee || 60}`}</span>
                 </div>
-                <div className="flex justify-between text-sm font-black text-[#001B3A] border-t border-slate-200/70 pt-2">
+                <div className="flex justify-between text-sm font-black text-white border-t border-slate-800 pt-2">
                   <span>Estimated Total</span>
-                  <span className="text-base text-blue-900">₹{cartGrandTotal}</span>
+                  <span className="text-base text-amber-400">₹{cartGrandTotal}</span>
                 </div>
 
                 {hasBlockingItem ? (
-                  <p className="text-[10px] font-bold text-red-600 text-center flex items-center justify-center gap-1">
-                    <AlertTriangle className="w-3.5 h-3.5" /> Fix out-of-stock items before checkout
+                  <p className="text-[10px] font-bold text-rose-400 text-center flex items-center justify-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Please adjust out-of-stock items before checkout
                   </p>
                 ) : isCheckoutPaused ? (
-                  <p className="text-[11px] font-extrabold text-amber-900 text-center bg-amber-50 border border-amber-300 p-2.5 rounded-xl">
+                  <p className="text-[11px] font-extrabold text-amber-400 text-center bg-amber-400/10 border border-amber-400/30 p-2.5 rounded-xl">
                     ⚠️ {checkoutPauseMessage || CHECKOUT_PAUSE_MESSAGE}
-                  </p>
-                ) : !isMoqSatisfied ? (
-                  <p className="text-[11px] font-extrabold text-amber-700 text-center bg-amber-50 border border-amber-200 p-2 rounded-lg">
-                    ⚠️ Minimum order requirement: 4 books (Add {booksToMoq} more)
                   </p>
                 ) : null}
 
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   type="button"
-                  disabled={isCheckoutPaused || hasBlockingItem || !isMoqSatisfied}
+                  disabled={isCheckoutPaused || hasBlockingItem}
                   onClick={() => {
                     if (isCheckoutPaused) {
                       showToast(checkoutPauseMessage || CHECKOUT_PAUSE_MESSAGE);
@@ -289,17 +281,15 @@ export const CartDrawer = () => {
                     setIsCartOpen(false);
                     if (!user) {
                       setIsAuthOpen(true);
-                      showToast('Please sign in with Google to place an order');
+                      showToast('Please sign in to complete checkout');
                       return;
                     }
                     setIsCheckoutOpen(true);
                   }}
-                  className="w-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 text-[#001B3A] font-extrabold text-xs py-3.5 rounded-xl shadow-md hover:shadow-lg transition-all uppercase tracking-wider text-center min-h-12 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs py-3.5 rounded-xl shadow-lg transition-all uppercase tracking-wider text-center min-h-12 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isCheckoutPaused
                     ? 'CHECKOUT TEMPORARILY PAUSED'
-                    : !isMoqSatisfied
-                    ? `ADD ${booksToMoq} MORE BOOK${booksToMoq > 1 ? 'S' : ''} TO CHECKOUT`
                     : user
                     ? 'PROCEED TO CHECKOUT'
                     : 'LOGIN TO CHECKOUT'}
@@ -309,9 +299,9 @@ export const CartDrawer = () => {
                   <Link
                     href="/cart"
                     onClick={() => setIsCartOpen(false)}
-                    className="text-xs font-bold text-blue-600 hover:underline inline-flex items-center gap-1 min-h-11"
+                    className="text-xs font-bold text-amber-400 hover:underline inline-flex items-center gap-1 min-h-11"
                   >
-                    <span>View Full Cart Page</span>
+                    <span>View Full Wardrobe Cart</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>

@@ -107,8 +107,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     },
     {
       key: 'catalog' as AdminTab,
-      label: 'Book Catalog & Stock',
-      subtitle: 'Prices, MRP, stock & CSV import',
+      label: 'Apparel Catalog & Sizes',
+      subtitle: 'Photos, sizes, prices, MRP & 3-in-1 combos',
       icon: BookOpen,
       badge: lowStockCount > 0 ? `${lowStockCount} Low` : undefined,
       badgeColor: 'bg-red-500 text-white',
@@ -176,10 +176,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             <BrandLogo size={36} className="shadow-md group-hover:scale-105 transition-transform" />
             <div>
               <span className="font-bold text-sm text-white tracking-tight block leading-tight">
-                Blessing Power Guide
+                VR Men&apos;s Collection
               </span>
-              <span className="text-[10px] text-blue-300/80 font-medium block">
-                Admin Management Portal
+              <span className="text-[10px] text-amber-400 font-medium block">
+                Clothing Store Admin Portal
               </span>
             </div>
           </Link>

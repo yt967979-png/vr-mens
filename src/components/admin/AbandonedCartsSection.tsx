@@ -175,12 +175,12 @@ export const AbandonedCartsSection: React.FC<AbandonedCartsSectionProps> = ({
     const cleanPhone = cart.phone.replace(/\D/g, '');
     const phoneWithCountry = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
 
-    const bookTitles = cart.items.map((it) => `• ${it.title} (Qty: ${it.qty || 1})`).join('\n');
+    const itemTitles = cart.items.map((it) => `• ${it.title} (Size: ${(it as any).selectedSize || 'Standard'}, Qty: ${it.qty || 1})`).join('\n');
     const shippingLine = cart.shippingFee && cart.shippingFee > 0
-      ? `Books: ₹${cart.subtotal || (cart.totalAmount - cart.shippingFee)}\nDelivery Charge: ₹${cart.shippingFee}\nTotal: ₹${cart.totalAmount}`
+      ? `Garments: ₹${cart.subtotal || (cart.totalAmount - cart.shippingFee)}\nDelivery Charge: ₹${cart.shippingFee}\nTotal: ₹${cart.totalAmount}`
       : `Total: ₹${cart.totalAmount} (Free Delivery 🎉)`;
 
-    const msg = `Vanakkam ${cart.name}! 📚\n\nThis is Blessing Power Guide. We noticed you selected books in your cart:\n${bookTitles}\n\n${shippingLine}\n\nNeed any help with delivery pincode or payment? You can easily resume and complete your order directly here:\nhttps://blessingpowerguide.in/cart?resume=order\n\nFast ST Courier Delivery across Tamil Nadu.`;
+    const msg = `Vanakkam ${cart.name}! 👔\n\nThis is VR Men's Wear. We noticed you selected premium menswear in your cart:\n${itemTitles}\n\n${shippingLine}\n\nNeed any help with size fit or delivery pincode? You can easily resume and complete your order directly here:\nhttps://vrmenswear.in/cart?resume=order\n\nExpress ST Courier Doorstep Delivery with 7-Day Size Exchange.`;
 
     const waUrl = `https://api.whatsapp.com/send?phone=${phoneWithCountry}&text=${encodeURIComponent(msg)}`;
     window.open(waUrl, '_blank', 'noopener,noreferrer');

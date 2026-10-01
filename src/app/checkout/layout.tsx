@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Secure Checkout | Blessing Power Guide',
+  title: "Secure Checkout | VR Men's Wear",
   description: 'Complete your order securely via Razorpay UPI and cards.',
   robots: {
     index: false,

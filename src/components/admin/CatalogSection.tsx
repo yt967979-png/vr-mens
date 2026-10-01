@@ -9,1418 +9,537 @@ import {
   Check,
   X,
   Upload,
-  BookOpen,
   Filter,
   CheckCircle2,
-  AlertCircle,
   ImageIcon,
   RefreshCw,
   Eye,
   AlertTriangle,
   ChevronDown,
-  ChevronUp,
+  Layers,
+  Ruler,
   Tag,
-  ShieldCheck,
-  Clock,
-  Unlock,
-  FileText,
-  ExternalLink,
-  Loader2,
+  Package,
+  Sparkles,
 } from 'lucide-react';
 import type { Product } from '@/context/StoreContext';
 import { useStore } from '@/context/StoreContext';
-import { authHeaders, authFormHeaders } from '@/lib/clientAuth';
-import {
-  STANDARD_COMBO_CHOICES,
-  ALL_COMBO_SUBJECT_DEFINITIONS,
-  getComboIncludedSubjects,
-} from '@/lib/comboMetadata';
+import { authFormHeaders } from '@/lib/clientAuth';
+import { APPAREL_CATEGORIES, STANDARD_TOP_SIZES, STANDARD_BOTTOM_SIZES, STANDARD_COMBO_SIZES } from '@/lib/products';
 import { isComboItem } from '@/lib/deliveryRules';
-import {
-  normalizeProductMedium,
-  isProductMultiMedium,
-  getProductMediumBadge,
-} from '@/lib/productMedium';
-
-export interface StockHoldItem {
-  id: string;
-  holdGroupId?: string;
-  bookId: string;
-  title: string;
-  cls?: string;
-  price?: number;
-  qty: number;
-  razorpayOrderId?: string;
-  expiresAt?: string;
-  createdAt?: string;
-}
-
-export interface ActiveStockHoldsData {
-  count: number;
-  totalQty: number;
-  list?: StockHoldItem[];
-}
 
 interface CatalogSectionProps {
   products: Product[];
-  activeStockHolds?: ActiveStockHoldsData;
-  onReleaseHold?: (holdGroupId: string, bookTitle: string) => Promise<void>;
   onUpdateProduct: (id: string | number, updates: any) => Promise<any> | void;
   onAddNewProduct?: (product: any) => Promise<any> | void;
   onCreateProduct?: (product: any) => Promise<any> | void;
   onDeleteProduct: (id: string | number) => Promise<any> | void;
   onShowToast: (msg: string) => void;
   authHeaders?: Record<string, string>;
+  activeStockHolds?: { count: number; totalQty: number; list?: any[] | undefined };
+  onReleaseHold?: (holdGroupId: string, bookTitle: string) => Promise<void> | void;
 }
 
-const DEFAULT_SUBJECTS = [
-  'Mathematics',
-  'Science',
-  'Social Science',
-  'Tamil',
-  'English',
-  'Physics',
-  'Chemistry',
-  'Biology',
-  'Computer Science',
-  'Commerce',
-  'Accountancy',
-  'Economics',
-  'Business Mathematics',
-  'History',
-  'Geography',
-  'All-in-One Full Set (Combo)',
-];
-
-export function isProductOrEditACombo(item: {
-  subject?: string | null;
-  title?: string | null;
-  category?: string | null;
-  category_id?: string | null;
-  comboSubjects?: string[] | null;
-  combo_subjects?: string[] | null;
-}): boolean {
-  const subj = String(item.subject || '').trim().toLowerCase();
-  const title = String(item.title || '').trim().toLowerCase();
-
-  // 1. Single subject guides can NEVER be combos (Tamil, English, Mathematics, Science, etc.)
-  const singleSubjects = [
-    'tamil',
-    'english',
-    'mathematics',
-    'maths',
-    'science',
-    'social science',
-    'social',
-    'physics',
-    'chemistry',
-    'biology',
-    'computer science',
-    'commerce',
-    'accountancy',
-    'economics',
-    'business mathematics',
-    'history',
-    'geography',
-  ];
-  if (singleSubjects.includes(subj)) {
-    return false;
-  }
-
-  // 2. Explicit Combo Subject option
-  if (subj === 'all-in-one full set (combo)' || subj.includes('combo') || subj.includes('all-in-one')) {
-    return true;
-  }
-
-  // 3. Explicit Combo title keywords (only when subject is not a single subject)
-  const isComboTitle =
-    title.includes('combo') ||
-    title.includes('5 in 1') ||
-    title.includes('5-in-1') ||
-    title.includes('6 in 1') ||
-    title.includes('6-in-1') ||
-    title.includes('7 in 1') ||
-    title.includes('7-in-1') ||
-    title.includes('all in one') ||
-    title.includes('all-in-one') ||
-    title.includes('full set');
-
-  if (isComboTitle) return true;
-
-  // 4. Strict check with isComboItem
-  return isComboItem(item);
+interface SizeVariantInput {
+  size: string;
+  price: number;
+  mrp: number;
+  stock: number;
+  enabled: boolean;
 }
 
-export const COMBO_PRESETS = [
-  {
-    label: '⚡ 10th Core (5 Books)',
-    cls: '10th',
-    subjects: ['Tamil', 'English', 'Mathematics', 'Science', 'Social Science'],
-  },
-  {
-    label: '🔬 11th/12th Bio-Maths (6 Books)',
-    cls: '12th',
-    subjects: ['Tamil', 'English', 'Mathematics', 'Physics', 'Chemistry', 'Biology'],
-  },
-  {
-    label: '💻 11th/12th Comp Sci (6 Books)',
-    cls: '12th',
-    subjects: ['Tamil', 'English', 'Mathematics', 'Physics', 'Chemistry', 'Computer Science'],
-  },
-  {
-    label: '📊 11th/12th Commerce (6 Books)',
-    cls: '12th',
-    subjects: ['Tamil', 'English', 'Commerce', 'Accountancy', 'Economics', 'Business Mathematics'],
-  },
-  {
-    label: '🌿 11th/12th Pure Science (6 Books)',
-    cls: '12th',
-    subjects: ['Tamil', 'English', 'Physics', 'Chemistry', 'Botany', 'Zoology'],
-  },
-];
-
-export const CatalogSection: React.FC<CatalogSectionProps> = ({
+export function CatalogSection({
   products,
-  activeStockHolds,
-  onReleaseHold,
   onUpdateProduct,
-  onAddNewProduct,
   onCreateProduct,
   onDeleteProduct,
   onShowToast,
-  authHeaders: parentAuthHeaders,
-}) => {
+}: CatalogSectionProps) {
   const { user, refreshProducts } = useStore();
+
+  // Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  // Form State: Product Information
+  const [formTitle, setFormTitle] = useState('');
+  const [formCategory, setFormCategory] = useState('shirts');
+  const [formBrand, setFormBrand] = useState("VR Men's Wear");
+  const [formBasePrice, setFormBasePrice] = useState<string>('599');
+  const [formBaseMrp, setFormBaseMrp] = useState<string>('1299');
+  const [formFabric, setFormFabric] = useState('100% Combed Cotton');
+  const [formFit, setFormFit] = useState('Slim Fit');
+  const [formSleeve, setFormSleeve] = useState('Full Sleeve');
+  const [formPattern, setFormPattern] = useState('Solid');
+  const [formCare, setFormCare] = useState('Machine Wash Cold');
+  const [formDescription, setFormDescription] = useState('');
+  const [formBadge, setFormBadge] = useState('Best Seller');
+
+  // Form State: Multi-Photo Gallery
+  const [formPrimaryImage, setFormPrimaryImage] = useState('');
+  const [formGalleryImages, setFormGalleryImages] = useState<string[]>([]);
+  const [imageUploading, setImageUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [selectedClass, setSelectedClass] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showHoldsBanner, setShowHoldsBanner] = useState(false);
-  const [editingId, setEditingId] = useState<string | number | null>(null);
-
-  // Quick edit states
-  const [editPrice, setEditPrice] = useState<number>(0);
-  const [editMrp, setEditMrp] = useState<number>(0);
-  const [editStock, setEditStock] = useState<number>(0);
-  const [editStockTamil, setEditStockTamil] = useState<number>(0);
-  const [editStockEnglish, setEditStockEnglish] = useState<number>(0);
-  const [editCls, setEditCls] = useState<string>('10th');
-  const [editSubject, setEditSubject] = useState<string>('Mathematics');
-  const [editTitle, setEditTitle] = useState<string>('');
-  const [editBadge, setEditBadge] = useState<string>('');
-  const [editImage, setEditImage] = useState<string>('');
-  const [editMedium, setEditMedium] = useState<string>('Both');
-  const [editImageUploading, setEditImageUploading] = useState<boolean>(false);
-  const editImageInputRef = useRef<HTMLInputElement>(null);
-  const [editComboSubjects, setEditComboSubjects] = useState<string[]>([]);
-  const [editCustomComboSubjectInput, setEditCustomComboSubjectInput] = useState('');
-  const [editComingSoon, setEditComingSoon] = useState<boolean>(false);
-
-  // New publication modal states
-  const [newTitle, setNewTitle] = useState('');
-  const [newCls, setNewCls] = useState('10th');
-  const [newMedium, setNewMedium] = useState<string>('Both');
-  const [newComingSoon, setNewComingSoon] = useState<boolean>(false);
-  const [selectedSubjectOption, setSelectedSubjectOption] = useState('Mathematics');
-  const [customSubjectText, setCustomSubjectText] = useState('');
-  const [selectedComboSubjects, setSelectedComboSubjects] = useState<string[]>([
-    'Tamil',
-    'English',
-    'Mathematics',
-    'Science',
-    'Social Science',
+  // Form State: 3-in-1 Combo Pack Details
+  const [formIsCombo, setFormIsCombo] = useState(false);
+  const [formComboItems, setFormComboItems] = useState<string[]>([
+    '1x Navy Blue Solid Shirt',
+    '1x Crisp White Solid Shirt',
+    '1x Charcoal Grey Solid Shirt',
   ]);
-  const [customComboSubjectInput, setCustomComboSubjectInput] = useState('');
-  const [newMrp, setNewMrp] = useState<string>('350');
-  const [newPrice, setNewPrice] = useState<string>('280');
-  const [newStock, setNewStock] = useState<string>('50');
-  const [newStockTamil, setNewStockTamil] = useState<string>('25');
-  const [newStockEnglish, setNewStockEnglish] = useState<string>('25');
-  const [lowStockThreshold, setLowStockThreshold] = useState<number>(5);
-  const [newBadge, setNewBadge] = useState('Popular');
-  const [newImage, setNewImage] = useState('');
-  const [hsnCode, setHsnCode] = useState('4901');
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [newComboItemText, setNewComboItemText] = useState('');
 
-  const [imageUploading, setImageUploading] = useState(false);
-  const [editSamplePdf, setEditSamplePdf] = useState<string>('');
-  const [newSamplePdf, setNewSamplePdf] = useState('');
-  const [pdfUploading, setPdfUploading] = useState(false);
-  const pdfInputRef = useRef<HTMLInputElement>(null);
-  const editPdfInputRef = useRef<HTMLInputElement>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [publishStatus, setPublishStatus] = useState<'published' | 'draft'>('published');
-
-  const classesList = ['all', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
-
-  // Dynamically merge subjects from existing catalog with default subjects
-  const availableSubjects = useMemo(() => {
-    const set = new Set(DEFAULT_SUBJECTS);
-    products.forEach((p) => {
-      if (p.subject && p.subject.trim()) set.add(p.subject.trim());
+  // Form State: Dynamic Size & Pricing Matrix
+  const [sizePresetType, setSizePresetType] = useState<'top' | 'bottom' | 'combo'>('top');
+  const [sizeVariants, setSizeVariants] = useState<Record<string, SizeVariantInput>>(() => {
+    const init: Record<string, SizeVariantInput> = {};
+    STANDARD_TOP_SIZES.forEach((s) => {
+      init[s] = { size: s, price: 599, mrp: 1299, stock: 20, enabled: ['M', 'L', 'XL'].includes(s) };
     });
-    return Array.from(set);
-  }, [products]);
+    return init;
+  });
 
-  const resolvedSubject = useMemo(() => {
-    if (selectedSubjectOption === '__custom__') {
-      return customSubjectText.trim() || 'General';
-    }
-    return selectedSubjectOption;
-  }, [selectedSubjectOption, customSubjectText]);
-
-  // Numerical pricing calculations
-  const numMrp = Number(newMrp) || 0;
-  const numPrice = Number(newPrice) || 0;
-
-  const priceError = useMemo(() => {
-    if (!newMrp || numMrp <= 0) return 'Printed MRP is required (must be > ₹0).';
-    if (!newPrice || numPrice <= 0) return 'Offer price is required. Click "Sell at MRP" if no discount.';
-    if (numPrice > numMrp) return `Offer price (₹${numPrice}) cannot exceed Printed MRP (₹${numMrp}).`;
-    return null;
-  }, [newMrp, newPrice, numMrp, numPrice]);
-
-  const discountPercent = useMemo(() => {
-    if (numPrice > 0 && numPrice < numMrp && numMrp > 0) {
-      return Math.round(((numMrp - numPrice) / numMrp) * 100);
-    }
-    return 0;
-  }, [numPrice, numMrp]);
-
-  const isSuspiciousDiscount = discountPercent >= 80;
-
-  // Holds map by book ID
-  const holdsByBookId = useMemo(() => {
-    const map = new Map<string, number>();
-    (activeStockHolds?.list || []).forEach((h) => {
-      const bId = String(h.bookId);
-      map.set(bId, (map.get(bId) || 0) + (h.qty || 0));
+  // Switch size preset types
+  const handlePresetChange = (type: 'top' | 'bottom' | 'combo') => {
+    setSizePresetType(type);
+    const list = type === 'top' ? STANDARD_TOP_SIZES : type === 'bottom' ? STANDARD_BOTTOM_SIZES : STANDARD_COMBO_SIZES;
+    const baseP = Number(formBasePrice) || 599;
+    const baseM = Number(formBaseMrp) || 1299;
+    const updated: Record<string, SizeVariantInput> = {};
+    list.forEach((s, idx) => {
+      updated[s] = {
+        size: s,
+        price: baseP,
+        mrp: baseM,
+        stock: 20,
+        enabled: idx < 3, // Enable first 3 by default
+      };
     });
-    return map;
-  }, [activeStockHolds]);
-
-  const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      if (selectedClass !== 'all' && (p.cls || '').toLowerCase() !== selectedClass.toLowerCase()) {
-        return false;
-      }
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase().trim();
-        const matchTitle = (p.title || '').toLowerCase().includes(q);
-        const matchSubj = (p.subject || '').toLowerCase().includes(q);
-        const matchCls = (p.cls || '').toLowerCase().includes(q);
-        if (!matchTitle && !matchSubj && !matchCls) return false;
-      }
-      return true;
-    });
-  }, [products, selectedClass, searchTerm]);
-
-  const handleStartEdit = (p: Product) => {
-    setEditingId(p.id);
-    setEditTitle(p.title || '');
-    setEditBadge(p.badge || '');
-    setEditImage(p.image || '');
-    setEditPrice(p.price);
-    setEditMrp(p.mrp || p.price);
-    const normMed = normalizeProductMedium(p.language);
-    setEditMedium(normMed);
-
-    const rawTamil = p.stockTamil ?? p.stock_tamil;
-    const rawEnglish = p.stockEnglish ?? p.stock_english;
-
-    let stTamil = 0;
-    let stEnglish = 0;
-    let stTotal = 0;
-
-    if (normMed === 'English') {
-      stEnglish = rawEnglish !== undefined && rawEnglish !== null ? Number(rawEnglish) : (p.stock ?? 0);
-      stTamil = 0;
-      stTotal = stEnglish;
-    } else if (normMed === 'Tamil') {
-      stTamil = rawTamil !== undefined && rawTamil !== null ? Number(rawTamil) : (p.stock ?? 0);
-      stEnglish = 0;
-      stTotal = stTamil;
-    } else {
-      stTamil = rawTamil !== undefined && rawTamil !== null ? Number(rawTamil) : (p.stock !== undefined && p.stock !== null ? Math.floor(Number(p.stock) / 2) : 0);
-      stEnglish = rawEnglish !== undefined && rawEnglish !== null ? Number(rawEnglish) : (p.stock !== undefined && p.stock !== null ? Math.ceil(Number(p.stock) / 2) : 0);
-      stTotal = stTamil + stEnglish;
-    }
-
-    setEditStock(stTotal);
-    setEditStockTamil(stTamil);
-    setEditStockEnglish(stEnglish);
-    setEditSamplePdf(p.samplePdfUrl || '');
-    setEditCls(p.cls || '10th');
-    setEditSubject(p.subject || 'Mathematics');
-    const isCombo = isProductOrEditACombo(p);
-    const initialSubs = isCombo
-      ? (p.comboSubjects && p.comboSubjects.length > 0
-          ? p.comboSubjects
-          : getComboIncludedSubjects(p).map((s) => s.name))
-      : [];
-    setEditComboSubjects(initialSubs);
-    setEditCustomComboSubjectInput('');
-    setEditComingSoon(Boolean(p.isComingSoon || p.is_coming_soon || p.status === 'coming_soon'));
+    setSizeVariants(updated);
   };
 
-  const handleEditMediumChange = (newMed: string) => {
-    const nextMed = normalizeProductMedium(newMed);
-    setEditMedium(nextMed);
-    if (nextMed === 'English') {
-      // ONLY take English stock — do NOT add Tamil stock!
-      const eng = editStockEnglish > 0 ? editStockEnglish : (editMedium === 'Both' ? 0 : editStock);
-      setEditStock(eng);
-    } else if (nextMed === 'Tamil') {
-      // ONLY take Tamil stock — do NOT add English stock!
-      const tam = editStockTamil > 0 ? editStockTamil : (editMedium === 'Both' ? 0 : editStock);
-      setEditStock(tam);
-    } else {
-      // Both
-      const t = editStockTamil || 0;
-      const e = editStockEnglish || 0;
-      setEditStock(t + e);
-    }
-  };
-
-  const handleEditDeviceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 10 * 1024 * 1024) {
-      onShowToast('❌ File too large. Max allowed is 10MB.');
-      return;
-    }
-
-    setEditImageUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('folder', 'blessing_power_guides');
-
-    try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: authFormHeaders(user),
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Image upload failed');
-      }
-
-      setEditImage(data.url);
-      onShowToast('✅ Cover image updated');
-    } catch (err: any) {
-      onShowToast(`❌ Upload failed: ${err.message}`);
-    } finally {
-      setEditImageUploading(false);
-    }
-  };
-
-  const handleSaveEdit = async (id: string | number) => {
-    const numPrice = Number(editPrice);
-    const numMrp = Number(editMrp);
-    const isBothMedium = editMedium === 'Both';
-    const isTamilMedium = editMedium === 'Tamil';
-    const isEnglishMedium = editMedium === 'English';
-
-    const numStockTamil = isBothMedium
-      ? Math.max(0, parseInt(String(editStockTamil), 10) || 0)
-      : isTamilMedium
-      ? Math.max(0, parseInt(String(editStock), 10) || 0)
-      : null;
-
-    const numStockEnglish = isBothMedium
-      ? Math.max(0, parseInt(String(editStockEnglish), 10) || 0)
-      : isEnglishMedium
-      ? Math.max(0, parseInt(String(editStock), 10) || 0)
-      : null;
-
-    const numStock = isBothMedium
-      ? (numStockTamil || 0) + (numStockEnglish || 0)
-      : Math.max(0, parseInt(String(editStock), 10) || 0);
-
-    const isAvailable = isBothMedium
-      ? ((numStockTamil || 0) > 0 || (numStockEnglish || 0) > 0)
-      : numStock > 0;
-
-    const isCombo = isProductOrEditACombo({
-      subject: editSubject,
-      title: editTitle,
-    });
-    const cleanComboSubjects = isCombo ? editComboSubjects : [];
-    try {
-      await onUpdateProduct(id, {
-        title: editTitle.trim(),
-        badge: editBadge.trim(),
-        image: editImage.trim() || undefined,
-        cls: editCls,
-        subject: editSubject.trim(),
-        language: editMedium,
-        category: isCombo ? 'combo' : 'guide',
-        category_id: isCombo ? 'cat-combos' : `cat-${String(editCls).toLowerCase().trim()}`,
-        comboSubjects: cleanComboSubjects,
-        combo_subjects: cleanComboSubjects,
-        price: numPrice,
-        mrp: numMrp,
-        stock: numStock,
-        stockTamil: numStockTamil,
-        stockEnglish: numStockEnglish,
-        stock_tamil: numStockTamil,
-        stock_english: numStockEnglish,
-        isComingSoon: editComingSoon,
-        is_coming_soon: editComingSoon,
-        inStock: editComingSoon ? false : isAvailable,
-        status: editComingSoon ? 'coming_soon' : (isAvailable ? 'published' : 'out_of_stock'),
-        samplePdfUrl: editSamplePdf.trim() || null,
-      });
-      refreshProducts(true);
-      onShowToast('✅ Publication details updated');
-      setEditingId(null);
-    } catch {
-      onShowToast('❌ Update error');
-    }
-  };
-
-  const handleToggleStockStatus = async (p: Product) => {
-    const isMulti = isProductMultiMedium(p.language);
-    const tStock = p.stockTamil ?? p.stock_tamil;
-    const eStock = p.stockEnglish ?? p.stock_english;
-    const isMultiBothOos = isMulti && (tStock !== null && tStock !== undefined && tStock <= 0) && (eStock !== null && eStock !== undefined && eStock <= 0);
-    const currentlyOOS = !p.inStock || (p.stock ?? 0) <= 0 || isMultiBothOos;
-    const nextInStock = currentlyOOS;
-
-    try {
-      if (nextInStock) {
-        const curStock = p.stock ?? 0;
-        if (curStock <= 0 || isMultiBothOos) {
-          if (isMulti) {
-            await onUpdateProduct(p.id, {
-              inStock: true,
-              status: 'published',
-              stock: 10,
-              stockTamil: 5,
-              stockEnglish: 5,
-              stock_tamil: 5,
-              stock_english: 5,
-            });
-          } else {
-            const med = normalizeProductMedium(p.language);
-            await onUpdateProduct(p.id, {
-              inStock: true,
-              status: 'published',
-              stock: 10,
-              stockTamil: med === 'Tamil' ? 10 : null,
-              stock_tamil: med === 'Tamil' ? 10 : null,
-              stockEnglish: med === 'English' ? 10 : null,
-              stock_english: med === 'English' ? 10 : null,
-            });
-          }
-        } else {
-          await onUpdateProduct(p.id, {
-            inStock: true,
-            status: 'published',
-          });
+  // 1-Click apply base price & MRP to all enabled sizes
+  const handleApplyBasePriceToAllSizes = () => {
+    const p = Number(formBasePrice) || 599;
+    const m = Number(formBaseMrp) || 1299;
+    setSizeVariants((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((k) => {
+        if (next[k].enabled) {
+          next[k] = { ...next[k], price: p, mrp: m };
         }
-        refreshProducts(true);
-        onShowToast(`📦 ${p.title} marked IN STOCK`);
-      } else {
-        await onUpdateProduct(p.id, {
-          inStock: false,
-          status: 'out_of_stock',
-        });
-        refreshProducts(true);
-        onShowToast(`⚠️ ${p.title} marked OUT OF STOCK`);
-      }
-    } catch {
-      onShowToast('❌ Toggle failed');
-    }
+      });
+      return next;
+    });
+    onShowToast('✓ Applied base price & MRP to all enabled sizes');
   };
 
-  const handleDeviceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Image upload handler
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isPrimary = true) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (file.size > 10 * 1024 * 1024) {
-      onShowToast('❌ File too large. Max allowed is 10MB.');
+      onShowToast('❌ File too large. Max 10MB allowed.');
       return;
     }
 
     setImageUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('folder', 'blessing_power_guides');
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'apparel');
 
     try {
       const res = await fetch('/api/upload', {
         method: 'POST',
         headers: authFormHeaders(user),
-        body: formData,
+        body: fd,
       });
-
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Image upload failed');
-      }
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
 
-      setNewImage(data.url);
-      onShowToast('✅ Cover image uploaded successfully');
+      if (isPrimary) {
+        setFormPrimaryImage(data.url);
+        onShowToast('✅ Primary cover image uploaded');
+      } else {
+        setFormGalleryImages((prev) => [...prev, data.url].slice(0, 4));
+        onShowToast('✅ Gallery photo uploaded');
+      }
     } catch (err: any) {
-      onShowToast(`❌ Upload failed: ${err.message}`);
+      onShowToast(`❌ Upload error: ${err.message}`);
     } finally {
       setImageUploading(false);
     }
   };
 
-  const handleDevicePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Open modal in edit mode
+  const handleStartEdit = (p: Product) => {
+    setEditingProduct(p);
+    setFormTitle(p.title || '');
+    setFormCategory(p.category || 'shirts');
+    setFormBrand(p.brand || "VR Men's Wear");
+    setFormBasePrice(String(p.price || 599));
+    setFormBaseMrp(String(p.mrp || 1299));
+    setFormFabric(p.fabric || '100% Combed Cotton');
+    setFormFit(p.fit || 'Slim Fit');
+    setFormSleeve(p.sleeve || 'Full Sleeve');
+    setFormPattern(p.pattern || 'Solid');
+    setFormCare(p.care || 'Machine Wash Cold');
+    setFormDescription(p.description || '');
+    setFormBadge(p.badge || '');
+    setFormPrimaryImage(p.image || '');
 
-    if (file.size > 25 * 1024 * 1024) {
-      onShowToast('❌ PDF too large. Max allowed is 25MB.');
-      return;
-    }
+    const imgs = Array.isArray(p.images) ? p.images : (p.image ? [p.image] : []);
+    setFormGalleryImages(imgs);
 
-    setPdfUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('folder', 'samples');
+    const isComb = Boolean(p.isCombo || p.is_combo || p.category === 'combos' || isComboItem(p));
+    setFormIsCombo(isComb);
+    const cItems = Array.isArray(p.comboItems) ? p.comboItems : (Array.isArray(p.combo_items) ? p.combo_items : []);
+    setFormComboItems(cItems.length > 0 ? cItems : ['1x Dress A', '1x Dress B', '1x Dress C']);
 
-    try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: authFormHeaders(user),
-        body: formData,
-      });
+    // Set up size variants
+    const baseP = Number(p.price) || 599;
+    const baseM = Number(p.mrp) || 1299;
+    const existingVariants = Array.isArray(p.variants) ? p.variants : [];
+    const sizesTicked = (p as any).sizesAvailable || (p as any).sizes_available || (existingVariants.length > 0 ? existingVariants.map((v: any) => v.size) : ['M', 'L', 'XL']);
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'PDF upload failed');
-      }
+    const isBottom = ['trousers', 'jeans'].includes(p.category || '');
+    const preset = isComb ? 'combo' : isBottom ? 'bottom' : 'top';
+    setSizePresetType(preset);
+    const list = preset === 'top' ? STANDARD_TOP_SIZES : preset === 'bottom' ? STANDARD_BOTTOM_SIZES : STANDARD_COMBO_SIZES;
 
-      setNewSamplePdf(data.url);
-      onShowToast('✅ Sample pages PDF uploaded successfully');
-    } catch (err: any) {
-      onShowToast(`❌ PDF upload failed: ${err.message}`);
-    } finally {
-      setPdfUploading(false);
-    }
-  };
-
-  const handleEditDevicePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 25 * 1024 * 1024) {
-      onShowToast('❌ PDF too large. Max allowed is 25MB.');
-      return;
-    }
-
-    setPdfUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('folder', 'samples');
-
-    try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: authFormHeaders(user),
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'PDF upload failed');
-      }
-
-      setEditSamplePdf(data.url);
-      onShowToast('✅ Sample pages PDF attached');
-    } catch (err: any) {
-      onShowToast(`❌ PDF upload failed: ${err.message}`);
-    } finally {
-      setPdfUploading(false);
-    }
-  };
-
-  const handleSubmit = async (targetStatus: 'published' | 'draft') => {
-    if (!newTitle.trim()) {
-      onShowToast('Please enter a book title');
-      return;
-    }
-    if (priceError) {
-      onShowToast(`⚠️ ${priceError}`);
-      return;
-    }
-
-    const isCombo = isProductOrEditACombo({
-      title: newTitle,
-      subject: resolvedSubject,
-    });
-
-    if (isCombo && selectedComboSubjects.length === 0) {
-      onShowToast('⚠️ Please tick at least 1 subject for this combo pack');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const isBoth = newMedium === 'Both';
-      const isTamil = newMedium === 'Tamil';
-      const isEnglish = newMedium === 'English';
-      const numStockTamil = isBoth ? Math.max(0, parseInt(String(newStockTamil), 10) || 0) : isTamil ? Math.max(0, parseInt(String(newStock), 10) || 0) : null;
-      const numStockEnglish = isBoth ? Math.max(0, parseInt(String(newStockEnglish), 10) || 0) : isEnglish ? Math.max(0, parseInt(String(newStock), 10) || 0) : null;
-      const finalStock = isBoth
-        ? (numStockTamil || 0) + (numStockEnglish || 0)
-        : Math.max(0, Number(newStock) || 0);
-
-      const payload = {
-        title: newTitle.trim(),
-        cls: newCls,
-        category: isCombo ? 'combo' : 'guide',
-        subject: resolvedSubject,
-        language: newMedium,
-        comboSubjects: isCombo ? selectedComboSubjects : undefined,
-        price: numPrice,
-        mrp: numMrp,
-        stock: finalStock,
-        stockTamil: numStockTamil,
-        stockEnglish: numStockEnglish,
-        stock_tamil: numStockTamil,
-        stock_english: numStockEnglish,
-        isComingSoon: newComingSoon,
-        is_coming_soon: newComingSoon,
-        status: newComingSoon ? 'coming_soon' : targetStatus,
-        badge: newBadge.trim() || (isCombo ? 'Combo Set' : ''),
-        description: isCombo
-          ? `Complete ${newCls} Standard All-in-One Combo Guide Pack (${selectedComboSubjects.join(', ')}). Covers full Tamil Nadu State Board syllabus with solved question papers.`
-          : `Complete ${newCls} Standard ${resolvedSubject} guide covering Tamil Nadu Samacheer Kalvi syllabus with question banks and answers.`,
-        image: newImage.trim() || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
-        samplePdfUrl: newSamplePdf.trim() || null,
+    const map: Record<string, SizeVariantInput> = {};
+    list.forEach((s) => {
+      const match = existingVariants.find((v: any) => v.size === s);
+      const isEnabled = sizesTicked.includes(s) || Boolean(match);
+      map[s] = {
+        size: s,
+        price: match ? match.price : baseP,
+        mrp: match && match.mrp ? match.mrp : baseM,
+        stock: match && typeof match.stock === 'number' ? match.stock : 20,
+        enabled: isEnabled,
       };
+    });
+    setSizeVariants(map);
+    setShowAddModal(true);
+  };
 
-      const creator = onAddNewProduct || onCreateProduct;
-      if (creator) {
-        await creator(payload);
-      } else {
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-          ...(parentAuthHeaders || {}),
-        };
-        if (user?.token) headers.Authorization = `Bearer ${user.token}`;
+  // Submit product creation or update
+  const handleSubmitProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formTitle.trim()) {
+      onShowToast('⚠️ Please enter an apparel title');
+      return;
+    }
 
-        const res = await fetch('/api/products', {
-          method: 'POST',
-          headers,
-          credentials: 'include',
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data.error || `Failed to create publication (${res.status})`);
-        }
-        // Server POST triggers notifyCatalogChanged → SSE → auto-refresh via StoreContext
+    // Filter only the sizes that the admin TICKED!
+    const enabledVariants = Object.values(sizeVariants)
+      .filter((v) => v.enabled)
+      .map((v) => ({
+        size: v.size,
+        price: Number(v.price) || Number(formBasePrice),
+        mrp: Number(v.mrp) || Number(formBaseMrp),
+        stock: Math.max(0, Number(v.stock) || 0),
+      }));
+
+    if (enabledVariants.length === 0) {
+      onShowToast('⚠️ Please tick at least one size for this product');
+      return;
+    }
+
+    const sizesAvailable = enabledVariants.map((v) => v.size);
+    const totalStock = enabledVariants.reduce((sum, v) => sum + v.stock, 0);
+    const primaryImg = formPrimaryImage || (formGalleryImages[0] || 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=600&q=80');
+    const allImages = formGalleryImages.length > 0 ? formGalleryImages : [primaryImg];
+
+    const payload = {
+      title: formTitle.trim(),
+      category: formCategory,
+      category_id: `cat-${formCategory}`,
+      brand: formBrand.trim(),
+      price: enabledVariants[0].price,
+      mrp: enabledVariants[0].mrp,
+      stock: totalStock,
+      inStock: totalStock > 0,
+      image: primaryImg,
+      images: allImages,
+      fabric: formFabric,
+      fit: formFit,
+      sleeve: formSleeve,
+      pattern: formPattern,
+      care: formCare,
+      description: formDescription || `Premium ${formTitle} crafted for modern style and maximum all-day comfort.`,
+      badge: formBadge,
+      is_combo: formIsCombo,
+      isCombo: formIsCombo,
+      combo_items: formIsCombo ? formComboItems : [],
+      comboItems: formIsCombo ? formComboItems : [],
+      sizes_available: sizesAvailable,
+      sizesAvailable: sizesAvailable,
+      variants: enabledVariants,
+    };
+
+    try {
+      if (editingProduct) {
+        await onUpdateProduct(editingProduct.id, payload);
+        onShowToast('✅ Apparel product updated successfully');
+      } else if (onCreateProduct) {
+        await onCreateProduct(payload);
+        onShowToast('✅ New apparel product added to collection');
       }
       refreshProducts(true);
-
-      onShowToast(
-        newComingSoon
-          ? `🚀 "${newTitle}" added as Coming Soon!`
-          : targetStatus === 'published'
-          ? `🎉 "${newTitle}" published live to bookstore!`
-          : `📝 "${newTitle}" saved as Draft`
-      );
       setShowAddModal(false);
-
-      // Reset form
-      setNewTitle('');
-      setNewSamplePdf('');
-      setSelectedSubjectOption('Mathematics');
-      setCustomSubjectText('');
-      setNewMrp('350');
-      setNewPrice('280');
-      setNewStock('50');
-      setNewStockTamil('25');
-      setNewStockEnglish('25');
-      setNewImage('');
-      setNewMedium('Both');
-      setNewBadge('Popular');
-      setSelectedComboSubjects(['Tamil', 'English', 'Mathematics', 'Science', 'Social Science']);
-      setCustomComboSubjectInput('');
-      setNewComingSoon(false);
-      setShowAdvanced(false);
+      setEditingProduct(null);
     } catch (err: any) {
-      onShowToast(`❌ ${err?.message || 'Failed to save publication'}`);
-    } finally {
-      setIsSubmitting(false);
+      onShowToast(`❌ Error: ${err.message}`);
     }
   };
 
+  // Filtered products list
+  const filteredProducts = useMemo(() => {
+    return products.filter((p: any) => {
+      const matchSearch =
+        searchQuery.trim() === '' ||
+        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        Boolean(p.brand && p.brand.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        Boolean(p.fabric && p.fabric.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchCat =
+        selectedCategoryFilter === 'all' ||
+        p.category === selectedCategoryFilter ||
+        p.categoryId === `cat-${selectedCategoryFilter}` ||
+        (selectedCategoryFilter === 'combos' && Boolean(p.isCombo || isComboItem(p)));
+
+      return matchSearch && matchCat;
+    });
+  }, [products, searchQuery, selectedCategoryFilter]);
+
   return (
-    <div className="space-y-4">
-      {/* Subject suggestions datalist for edit inputs */}
-      <datalist id="admin-subject-options">
-        {DEFAULT_SUBJECTS.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
-
-      {/* Active Student Holds Banner (If any) */}
-      {(activeStockHolds?.count ?? 0) > 0 && (
-        <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-4 text-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <Clock className="w-4 h-4 text-[#2874f0] animate-spin" />
-              <span className="font-bold text-slate-900">
-                <strong className="text-[#2874f0]">{activeStockHolds?.count} student(s)</strong> currently in checkout ({activeStockHolds?.totalQty} copies temporarily reserved)
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowHoldsBanner(!showHoldsBanner)}
-              className="text-xs font-bold text-[#2874f0] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <span>{showHoldsBanner ? 'Hide Held Details' : 'View Held Books'}</span>
-              {showHoldsBanner ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-
-          {showHoldsBanner && (activeStockHolds?.list || []).length > 0 && (
-            <div className="mt-3 pt-3 border-t border-blue-200/60 space-y-2">
-              {(activeStockHolds?.list || []).map((h) => (
-                <div
-                  key={h.id}
-                  className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 text-xs"
-                >
-                  <div>
-                    <span className="font-bold text-slate-900">{h.title}</span>
-                    <span className="text-slate-500 ml-2 font-medium">({h.qty} copy held)</span>
-                    {h.expiresAt && (
-                      <span className="text-[11px] text-amber-700 ml-3">
-                        Expires: {new Date(h.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    )}
-                  </div>
-                  {onReleaseHold && (
-                    <button
-                      type="button"
-                      onClick={() => onReleaseHold(h.holdGroupId || h.id, h.title)}
-                      className="px-2.5 py-1 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 rounded-lg text-[11px] font-bold cursor-pointer"
-                    >
-                      Release to Rack
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Top Filter Bar & Search */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-        {/* Class Standard Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 pb-3 text-xs font-semibold">
-          {classesList.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setSelectedClass(c)}
-              className={`px-3.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                selectedClass === c
-                  ? 'bg-[#2874f0] text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              <span>{c === 'all' ? 'ALL STANDARDS' : `${c} Standard`}</span>
-            </button>
-          ))}
+    <div className="space-y-6">
+      {/* Top Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div>
+          <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+            VR Men&apos;s Collection Catalog
+          </span>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+            Apparel Inventory &amp; Variants
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Manage shirts, t-shirts, trousers, kurtas, size variants, and 3-in-1 combo packs
+          </p>
         </div>
 
-        {/* Search & Add Book Button */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search by Guide Title, Standard, or Subject..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#2874f0] focus:bg-white text-slate-900"
-            />
-          </div>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => refreshProducts(true)}
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition"
+            title="Refresh Catalog"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2.5 bg-[#2874f0] hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New Publication</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingProduct(null);
+              setFormTitle('');
+              setFormCategory('shirts');
+              setFormBasePrice('599');
+              setFormBaseMrp('1299');
+              setFormPrimaryImage('');
+              setFormGalleryImages([]);
+              setFormIsCombo(false);
+              handlePresetChange('top');
+              setShowAddModal(true);
+            }}
+            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-600 text-white font-bold text-xs sm:text-sm rounded-xl flex items-center gap-2 shadow-sm transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Apparel</span>
+          </button>
         </div>
       </div>
 
-      {/* Publications Table (Desktop md+) */}
-      <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+        {/* Search */}
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search products by title, fabric, or brand..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm outline-none focus:border-amber-500 shadow-sm"
+          />
+        </div>
+
+        {/* Category Pills */}
+        <div className="flex gap-1.5 overflow-x-auto py-1">
+          <button
+            type="button"
+            onClick={() => setSelectedCategoryFilter('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
+              selectedCategoryFilter === 'all'
+                ? 'bg-slate-900 dark:bg-amber-500 text-white'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
+            }`}
+          >
+            All Items ({products.length})
+          </button>
+          {APPAREL_CATEGORIES.map((cat) => (
+            <button
+              key={cat.slug}
+              type="button"
+              onClick={() => setSelectedCategoryFilter(cat.slug)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
+                selectedCategoryFilter === cat.slug
+                  ? 'bg-slate-900 dark:bg-amber-500 text-white'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
+              }`}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Products Table */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="p-4">Guide Book</th>
-                <th className="p-4">Standard &amp; Subject</th>
-                <th className="p-4">Offer Price / MRP</th>
-                <th className="p-4">Rack Inventory Status</th>
-                <th className="p-4 text-right">Actions</th>
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+              <tr>
+                <th className="py-3.5 px-4">Product Details</th>
+                <th className="py-3.5 px-4">Category</th>
+                <th className="py-3.5 px-4">Price &amp; MRP</th>
+                <th className="py-3.5 px-4">Sizes &amp; Inventory</th>
+                <th className="py-3.5 px-4">Status</th>
+                <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center text-slate-400">
-                    <div className="max-w-xs mx-auto space-y-2">
-                      <BookOpen className="w-8 h-8 mx-auto text-slate-300" />
-                      <p className="font-bold text-sm text-slate-800">No Publications Found</p>
-                      <p className="text-xs text-slate-500">
-                        Try adjusting your search keywords or choosing a different standard filter.
-                      </p>
-                    </div>
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    No apparel products found matching your search.
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((p) => {
-                  const isEditing = editingId === p.id;
-                  const disc =
-                    p.mrp > p.price
-                      ? p.price <= 0
-                        ? 100
-                        : Math.min(99, Math.round(((p.mrp - p.price) / p.mrp) * 100))
-                      : 0;
-                  const isMulti = isProductMultiMedium(p.language);
-                  const tStock = p.stockTamil ?? p.stock_tamil;
-                  const eStock = p.stockEnglish ?? p.stock_english;
-                  const isMultiBothOos = isMulti && ((tStock !== null && tStock !== undefined && tStock <= 0) || tStock === 0) && ((eStock !== null && eStock !== undefined && eStock <= 0) || eStock === 0);
-                  const isOOS = !p.inStock || (p.stock ?? 0) <= 0 || isMultiBothOos;
-                  const isLow = (p.stock ?? 99) <= 5 && !isOOS;
-                  const heldCount = holdsByBookId.get(String(p.id)) || 0;
+                filteredProducts.map((p: any) => {
+                  const variants = Array.isArray(p.variants) ? p.variants : [];
+                  const isCombo = Boolean(p.isCombo || p.is_combo || String(p.category).includes('combo') || isComboItem(p));
+                  const isOOS = p.inStock === false || (p.stock !== undefined && p.stock <= 0);
 
                   return (
-                    <tr key={p.id} className={`transition-colors ${isOOS ? 'bg-slate-100/90 text-slate-500 hover:bg-slate-200/60' : 'hover:bg-slate-50/80'}`}>
-                      {/* Book Cover & Title */}
-                      <td className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="relative group shrink-0">
+                    <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
+                      {/* Product image & title */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-14 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden relative shrink-0 border border-slate-200 dark:border-slate-700">
                             <img
-                              src={isEditing && editImage ? editImage : p.image}
-                              alt={p.title}
-                              className={`w-12 h-12 object-contain bg-slate-50 border border-slate-200 rounded-lg p-0.5 transition-all ${isOOS ? 'grayscale opacity-60' : ''}`}
+                              src={p.image || 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=100&q=80'}
+                              alt=""
+                              className="w-full h-full object-cover object-top"
                             />
-                            {isEditing && (
-                              <button
-                                type="button"
-                                disabled={editImageUploading}
-                                onClick={() => editImageInputRef.current?.click()}
-                                className="absolute inset-0 bg-slate-900/60 text-white rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-[9px] font-bold"
-                                title="Change cover image"
-                              >
-                                {editImageUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                              </button>
-                            )}
                           </div>
-                          <div className="min-w-0 max-w-sm flex-1">
-                            {isEditing ? (
-                              <div className="space-y-1.5">
-                                <input
-                                  type="text"
-                                  value={editTitle}
-                                  onChange={(e) => setEditTitle(e.target.value)}
-                                  placeholder="Publication Title"
-                                  className="w-full px-2 py-1 bg-white border border-blue-400 rounded-lg text-xs font-bold outline-none text-slate-900"
-                                />
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <select
-                                    value={editBadge}
-                                    onChange={(e) => setEditBadge(e.target.value)}
-                                    className="px-2 py-0.5 bg-white border border-slate-300 rounded text-[10px] font-bold outline-none cursor-pointer"
-                                  >
-                                    <option value="">No Badge</option>
-                                    <option value="Popular">Popular</option>
-                                    <option value="Bestseller">Bestseller</option>
-                                    <option value="Combo Set">Combo Set</option>
-                                    <option value="New Edition">New Edition</option>
-                                  </select>
-                                  <select
-                                    value={editMedium}
-                                    onChange={(e) => handleEditMediumChange(e.target.value)}
-                                    className="px-2 py-0.5 bg-emerald-50 text-emerald-900 border border-emerald-300 rounded text-[10px] font-bold outline-none cursor-pointer"
-                                    title="Medium / Language"
-                                  >
-                                    <option value="Both">🌐 Tamil & English</option>
-                                    <option value="Tamil">📘 Tamil Only (தமிழ் வழி)</option>
-                                    <option value="English">📗 English Medium Only</option>
-                                  </select>
-                                  <input
-                                    ref={editImageInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleEditDeviceImageUpload}
-                                    className="hidden"
-                                  />
-                                  <button
-                                    type="button"
-                                    disabled={editImageUploading}
-                                    onClick={() => editImageInputRef.current?.click()}
-                                    className="text-[10px] text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded font-bold cursor-pointer flex items-center gap-1"
-                                  >
-                                    <ImageIcon className="w-2.5 h-2.5" />
-                                    <span>{editImageUploading ? 'Uploading...' : 'Change Cover'}</span>
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                <span className={`font-bold text-xs block truncate ${isOOS ? 'text-slate-500 line-through decoration-slate-400' : 'text-slate-900'}`}>
-                                  {p.title}
+                          <div>
+                            <span className="font-bold text-slate-900 dark:text-white line-clamp-1">
+                              {p.title}
+                            </span>
+                            <div className="flex items-center gap-2 text-[10.5px] text-slate-400 mt-0.5">
+                              <span>{p.brand || "VR Men's Wear"}</span>
+                              {p.fabric && <span>• {p.fabric}</span>}
+                              {isCombo && (
+                                <span className="px-1.5 py-0.2 rounded bg-purple-100 text-purple-700 font-bold">
+                                  3-in-1 Combo
                                 </span>
-                                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                                  {p.badge && (
-                                    <span className="inline-block text-[9px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
-                                      {p.badge}
-                                    </span>
-                                  )}
-                                  {(() => {
-                                    const mb = getProductMediumBadge(p.language);
-                                    return (
-                                      <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-md ${mb.pillClasses}`}>
-                                        {mb.shortBadge}
-                                      </span>
-                                    );
-                                  })()}
-                                  {p.samplePdfUrl && (
-                                    <a
-                                      href={p.samplePdfUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 text-[9px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-md"
-                                      title="Click to view sample pages PDF"
-                                    >
-                                      <FileText className="w-2.5 h-2.5 text-purple-600" />
-                                      <span>Sample PDF</span>
-                                      <ExternalLink className="w-2 h-2 text-purple-500" />
-                                    </a>
-                                  )}
-                                </div>
-                              </>
-                            )}
-                            {isEditing && (
-                              <div className="mt-2 pt-1 border-t border-slate-200 flex items-center gap-2">
-                                <input
-                                  ref={editPdfInputRef}
-                                  type="file"
-                                  accept="application/pdf,.pdf"
-                                  onChange={handleEditDevicePdfUpload}
-                                  className="hidden"
-                                />
-                                <button
-                                  type="button"
-                                  disabled={pdfUploading}
-                                  onClick={() => editPdfInputRef.current?.click()}
-                                  className="text-[10px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-1 rounded-md cursor-pointer flex items-center gap-1"
-                                >
-                                  <FileText className="w-3 h-3" />
-                                  <span>{editSamplePdf ? 'Replace PDF' : '+ Attach Sample PDF'}</span>
-                                </button>
-                                {editSamplePdf && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditSamplePdf('')}
-                                    className="text-[10px] text-red-600 hover:underline cursor-pointer"
-                                  >
-                                    Remove
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                            {isEditing && isProductOrEditACombo({ subject: editSubject, title: editTitle }) && (
-                              <div className="mt-3 p-3 bg-purple-50/80 border border-purple-200 rounded-xl space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs">📦</span>
-                                    <span className="text-[11px] font-black text-purple-950 uppercase tracking-wide">
-                                      Combo Subjects ({editComboSubjects.length} Books)
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditComboSubjects(['Tamil', 'English', 'Mathematics', 'Science', 'Social Science'])}
-                                      className="text-[9px] font-bold px-1.5 py-0.5 bg-white border border-purple-200 text-purple-800 rounded hover:bg-purple-100 cursor-pointer"
-                                    >
-                                      10th (5)
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditComboSubjects(['Tamil', 'English', 'Mathematics', 'Physics', 'Chemistry', 'Biology'])}
-                                      className="text-[9px] font-bold px-1.5 py-0.5 bg-white border border-purple-200 text-purple-800 rounded hover:bg-purple-100 cursor-pointer"
-                                    >
-                                      Bio-Maths (6)
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditComboSubjects(['Tamil', 'English', 'Commerce', 'Accountancy', 'Economics', 'Business Mathematics'])}
-                                      className="text-[9px] font-bold px-1.5 py-0.5 bg-white border border-purple-200 text-purple-800 rounded hover:bg-purple-100 cursor-pointer"
-                                    >
-                                      Commerce (6)
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
-                                  {STANDARD_COMBO_CHOICES.map((choice) => {
-                                    const isTicked = editComboSubjects.includes(choice.name);
-                                    return (
-                                      <label
-                                        key={choice.name}
-                                        className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-[10px] font-bold cursor-pointer transition-colors ${
-                                          isTicked
-                                            ? 'bg-white border-purple-500 text-purple-950 shadow-2xs'
-                                            : 'bg-white/60 border-slate-200 text-slate-600 hover:bg-white'
-                                        }`}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={isTicked}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              setEditComboSubjects((prev) => [...prev, choice.name]);
-                                            } else {
-                                              setEditComboSubjects((prev) => prev.filter((s) => s !== choice.name));
-                                            }
-                                          }}
-                                          className="w-3.5 h-3.5 rounded text-purple-600 focus:ring-purple-500 cursor-pointer accent-purple-600"
-                                        />
-                                        <span>{choice.icon}</span>
-                                        <span className="truncate">{choice.name}</span>
-                                      </label>
-                                    );
-                                  })}
-                                </div>
-
-                                <div className="flex items-center gap-1.5">
-                                  <input
-                                    type="text"
-                                    placeholder="+ Extra book to combo..."
-                                    value={editCustomComboSubjectInput}
-                                    onChange={(e) => setEditCustomComboSubjectInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        const v = editCustomComboSubjectInput.trim();
-                                        if (v && !editComboSubjects.includes(v)) {
-                                          setEditComboSubjects((prev) => [...prev, v]);
-                                          setEditCustomComboSubjectInput('');
-                                        }
-                                      }
-                                    }}
-                                    className="flex-1 px-2 py-1 bg-white border border-purple-200 rounded text-[10px] outline-none"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const v = editCustomComboSubjectInput.trim();
-                                      if (v && !editComboSubjects.includes(v)) {
-                                        setEditComboSubjects((prev) => [...prev, v]);
-                                        setEditCustomComboSubjectInput('');
-                                      }
-                                    }}
-                                    className="px-2 py-1 bg-purple-600 text-white rounded text-[10px] font-bold cursor-pointer"
-                                  >
-                                    Add
-                                  </button>
-                                </div>
-
-                                <div className="p-2 bg-gradient-to-br from-amber-50 to-orange-50/70 border border-dashed border-amber-300 rounded-xl space-y-1">
-                                  <span className="text-[10px] font-black text-amber-900 flex items-center gap-1">
-                                    <span>📦 Inside This Combo Pack ({editComboSubjects.length} Books):</span>
-                                  </span>
-                                  <div className="flex flex-wrap gap-1">
-                                    {editComboSubjects.map((sub, i) => (
-                                      <span
-                                        key={sub}
-                                        className="text-[9px] font-bold bg-white text-slate-800 border border-amber-200 px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-2xs"
-                                      >
-                                        <span>{i + 1}. {sub}</span>
-                                        <button
-                                          type="button"
-                                          onClick={() => setEditComboSubjects((prev) => prev.filter((s) => s !== sub))}
-                                          className="text-slate-300 hover:text-red-500 cursor-pointer"
-                                        >
-                                          ×
-                                        </button>
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
 
-                      {/* Class & Subject */}
-                      <td className="p-4">
-                        {isEditing ? (
-                          <div className="space-y-1.5 min-w-[130px]">
-                            <select
-                              value={editCls}
-                              onChange={(e) => setEditCls(e.target.value)}
-                              className="w-full px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-bold outline-none focus:border-[#2874f0] cursor-pointer"
-                            >
-                              {['6th', '7th', '8th', '9th', '10th', '11th', '12th'].map((c) => (
-                                <option key={c} value={c}>
-                                  {c} Standard
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              type="text"
-                              list="admin-subject-options"
-                              value={editSubject}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setEditSubject(val);
-                                if (isProductOrEditACombo({ subject: val, title: editTitle }) && editComboSubjects.length === 0) {
-                                  setEditComboSubjects(getComboIncludedSubjects({ cls: editCls, title: editTitle }).map((s) => s.name));
-                                }
-                              }}
-                              placeholder="Subject (e.g. Tamil)"
-                              className="w-full px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-medium outline-none focus:border-[#2874f0]"
-                            />
-                          </div>
-                        ) : (
-                          <div>
-                            <span className="font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md text-[11px] border border-slate-200">
-                              {p.cls || 'General'}
-                            </span>
-                            {p.subject && (
-                              <span className="text-xs text-slate-500 block mt-1 font-medium">
-                                {p.subject}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                      {/* Category */}
+                      <td className="py-3.5 px-4 font-semibold text-slate-700 dark:text-slate-300 capitalize">
+                        {p.category || 'Shirts'}
                       </td>
 
                       {/* Price & MRP */}
-                      <td className="p-4">
-                        {isEditing ? (
-                          <div className="flex items-center gap-2">
-                            <div>
-                              <span className="text-[10px] text-slate-400 block">Offer ₹</span>
-                              <input
-                                type="number"
-                                step="any"
-                                min="0"
-                                value={editPrice}
-                                onChange={(e) => setEditPrice(e.target.value === '' ? ('' as any) : Number(e.target.value))}
-                                className="w-18 px-2 py-1 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold outline-none focus:border-[#2874f0]"
-                              />
-                            </div>
-                            <div>
-                              <span className="text-[10px] text-slate-400 block">MRP ₹</span>
-                              <input
-                                type="number"
-                                step="any"
-                                min="0"
-                                value={editMrp}
-                                onChange={(e) => setEditMrp(e.target.value === '' ? ('' as any) : Number(e.target.value))}
-                                className="w-18 px-2 py-1 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold outline-none focus:border-[#2874f0]"
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-sm text-slate-900">₹{p.price}</span>
-                              {p.mrp > p.price && (
-                                <span className="line-through text-xs text-slate-400">
-                                  ₹{p.mrp}
-                                </span>
-                              )}
-                            </div>
-                            {disc > 0 && (
-                              <span className="text-[10px] text-emerald-600 font-bold block">
-                                {disc}% SAVINGS
-                              </span>
-                            )}
-                          </div>
-                        )}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="font-black text-slate-900 dark:text-white">
+                            ₹{p.price}
+                          </span>
+                          {p.mrp > p.price && (
+                            <span className="text-[11px] text-slate-400 line-through">
+                              ₹{p.mrp}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
-                      {/* Stock Inventory */}
-                      <td className="p-4">
-                        {isEditing ? (
-                          <div className="space-y-1.5">
-                            {editMedium === 'Both' ? (
-                              <div className="space-y-1.5 min-w-[140px]">
-                                <span className="text-[10px] font-black uppercase text-blue-900 block">
-                                  Copies by Medium:
-                                </span>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-1 py-0.5 rounded w-10 text-center shrink-0">தமிழ்</span>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={editStockTamil}
-                                    onChange={(e) => setEditStockTamil(Math.max(0, Number(e.target.value) || 0))}
-                                    className="w-16 px-2 py-1 bg-white border border-amber-300 rounded-lg text-xs font-bold outline-none"
-                                    placeholder="Tamil"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] font-bold text-emerald-900 bg-emerald-100 px-1 py-0.5 rounded w-10 text-center shrink-0">Eng</span>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={editStockEnglish}
-                                    onChange={(e) => setEditStockEnglish(Math.max(0, Number(e.target.value) || 0))}
-                                    className="w-16 px-2 py-1 bg-white border border-emerald-300 rounded-lg text-xs font-bold outline-none"
-                                    placeholder="English"
-                                  />
-                                </div>
-                                <div className="text-[9.5px] font-black text-slate-500 pt-0.5">
-                                  Total: {Number(editStockTamil || 0) + Number(editStockEnglish || 0)} in Rack
-                                </div>
-                              </div>
-                            ) : (
-                              <div>
-                                <span className="text-[10px] text-slate-400 block">Copies in Rack</span>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  value={editStock}
-                                  onChange={(e) => setEditStock(Math.max(0, Number(e.target.value) || 0))}
-                                  className="w-20 px-2 py-1 bg-slate-50 border border-blue-400 rounded-lg text-xs font-bold outline-none"
-                                />
-                              </div>
-                            )}
-                            <label className="flex items-center gap-1.5 cursor-pointer pt-1">
-                              <input
-                                type="checkbox"
-                                checked={editComingSoon}
-                                onChange={(e) => setEditComingSoon(e.target.checked)}
-                                className="w-3.5 h-3.5 text-purple-600 rounded border-slate-300 cursor-pointer"
-                              />
-                              <span className="text-[10px] font-bold text-purple-800">Coming Soon</span>
-                            </label>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-1 items-start">
-                            {(p.isComingSoon || p.is_coming_soon || p.status === 'coming_soon') ? (
-                              <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-purple-50 text-purple-700 border-purple-200">
-                                COMING SOON
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleToggleStockStatus(p)}
-                                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${
-                                  isOOS
-                                    ? 'bg-red-50 text-red-600 border-red-200'
-                                    : isLow
-                                    ? 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
-                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      {/* Sizes & Stock */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-wrap gap-1 max-w-[180px]">
+                          {variants.length > 0 ? (
+                            variants.map((v: any) => (
+                              <span
+                                key={v.size}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                                  v.stock > 0
+                                    ? 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                    : 'bg-red-50 text-red-500 border-red-200 line-through'
                                 }`}
-                                title="Click to toggle in-stock / out-of-stock"
+                                title={`Size ${v.size}: ₹${v.price} (${v.stock} in stock)`}
                               >
-                                {isOOS ? 'OUT OF STOCK' : `${p.stock ?? '—'} IN RACK`}
-                              </button>
-                            )}
-
-                            {isProductMultiMedium(p.language) && (
-                              <div className="flex items-center gap-1 mt-0.5">
-                                {(() => {
-                                  const tQty = p.stockTamil ?? p.stock_tamil;
-                                  const eQty = p.stockEnglish ?? p.stock_english;
-                                  return (
-                                    <>
-                                      <span
-                                        className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded border ${
-                                          tQty === 0
-                                            ? 'bg-slate-100 text-slate-400 border-slate-200 line-through'
-                                            : 'bg-amber-50 text-amber-900 border-amber-200'
-                                        }`}
-                                        title="Tamil Medium Copies"
-                                      >
-                                        தமிழ்: {tQty ?? '—'}
-                                      </span>
-                                      <span
-                                        className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded border ${
-                                          eQty === 0
-                                            ? 'bg-slate-100 text-slate-400 border-slate-200 line-through'
-                                            : 'bg-emerald-50 text-emerald-900 border-emerald-200'
-                                        }`}
-                                        title="English Medium Copies"
-                                      >
-                                        Eng: {eQty ?? '—'}
-                                      </span>
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                            )}
-
-                            {heldCount > 0 && (
-                              <span className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
-                                <Clock className="w-2.5 h-2.5 text-blue-600 animate-spin" />
-                                <span>{heldCount} on checkout hold</span>
+                                {v.size}:{v.stock}
                               </span>
-                            )}
-                          </div>
-                        )}
+                            ))
+                          ) : (
+                            <span className="text-slate-500">
+                              {p.stock ?? 50} units
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                            isOOS
+                              ? 'bg-rose-50 text-rose-600'
+                              : 'bg-emerald-50 text-emerald-700'
+                          }`}
+                        >
+                          {isOOS ? 'Out of Stock' : 'Active'}
+                        </span>
                       </td>
 
                       {/* Actions */}
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {isEditing ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleSaveEdit(p.id)}
-                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-xs"
-                              >
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setEditingId(null)}
-                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold cursor-pointer"
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleStartEdit(p)}
-                                className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold cursor-pointer transition-colors"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => onDeleteProduct(p.id)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                                title="Delete Publication"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEdit(p)}
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
+                            title="Edit Product & Sizes"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteProduct(p.id)}
+                            className="p-1.5 rounded-lg border border-rose-200 text-rose-500 hover:bg-rose-50"
+                            title="Delete Product"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1432,1180 +551,476 @@ export const CatalogSection: React.FC<CatalogSectionProps> = ({
         </div>
       </div>
 
-      {/* Publications Cards (Mobile md:hidden) */}
-      <div className="block md:hidden space-y-3">
-        {filteredProducts.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 space-y-2">
-            <BookOpen className="w-8 h-8 mx-auto text-slate-300" />
-            <p className="font-bold text-sm text-slate-800">No Publications Found</p>
-            <p className="text-xs text-slate-500">Try adjusting your filters or search.</p>
-          </div>
-        ) : (
-          filteredProducts.map((p) => {
-            const isEditing = editingId === p.id;
-            const disc =
-              p.mrp > p.price
-                ? p.price <= 0
-                  ? 100
-                  : Math.min(99, Math.round(((p.mrp - p.price) / p.mrp) * 100))
-                : 0;
-            const isMulti = isProductMultiMedium(p.language);
-            const tStock = p.stockTamil ?? p.stock_tamil;
-            const eStock = p.stockEnglish ?? p.stock_english;
-            const isMultiBothOos = isMulti && ((tStock !== null && tStock !== undefined && tStock <= 0) || tStock === 0) && ((eStock !== null && eStock !== undefined && eStock <= 0) || eStock === 0);
-            const isOOS = !p.inStock || (p.stock ?? 0) <= 0 || isMultiBothOos;
-            const isLow = (p.stock ?? 99) <= 5 && !isOOS;
-            const heldCount = holdsByBookId.get(String(p.id)) || 0;
-
-            if (isEditing) {
-              return (
-                <div key={p.id} className="bg-white rounded-2xl border-2 border-blue-400 p-4 shadow-md space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                    <span className="text-xs font-bold text-blue-600">Editing Publication</span>
-                    <button
-                      type="button"
-                      onClick={() => setEditingId(null)}
-                      className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-700 block mb-1">Guide Book Title</label>
-                      <input
-                        type="text"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:border-[#2874f0] text-slate-900"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Standard</label>
-                        <select
-                          value={editCls}
-                          onChange={(e) => setEditCls(e.target.value)}
-                          className="w-full px-2 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none cursor-pointer"
-                        >
-                          {['6th', '7th', '8th', '9th', '10th', '11th', '12th'].map((c) => (
-                            <option key={c} value={c}>{c} Standard</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Subject</label>
-                        <input
-                          type="text"
-                          list="admin-subject-options"
-                          value={editSubject}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setEditSubject(val);
-                            if (isProductOrEditACombo({ subject: val, title: editTitle }) && editComboSubjects.length === 0) {
-                              setEditComboSubjects(getComboIncludedSubjects({ cls: editCls, title: editTitle }).map((s) => s.name));
-                            }
-                          }}
-                          className="w-full px-2 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-700 block mb-1">Medium / பயிற்று மொழி</label>
-                      <select
-                        value={editMedium}
-                        onChange={(e) => handleEditMediumChange(e.target.value)}
-                        className="w-full px-2 py-2 bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold outline-none cursor-pointer"
-                        title="Medium / Language"
-                      >
-                        <option value="Both">🌐 Tamil & English</option>
-                        <option value="Tamil">📘 Tamil Only (தமிழ் வழி)</option>
-                        <option value="English">📗 English Medium Only</option>
-                      </select>
-                    </div>
-
-                    {/* Mobile Combo Subjects Editor */}
-                    {isProductOrEditACombo({ subject: editSubject, title: editTitle }) && (
-                      <div className="p-3 bg-purple-50/80 border border-purple-200 rounded-xl space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-black text-purple-950 uppercase">
-                            📦 Inside Combo ({editComboSubjects.length} Books)
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setEditComboSubjects(['Tamil', 'English', 'Mathematics', 'Science', 'Social Science'])}
-                            className="text-[9px] font-bold px-1.5 py-0.5 bg-white border border-purple-200 text-purple-800 rounded"
-                          >
-                            10th (5)
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
-                          {STANDARD_COMBO_CHOICES.map((choice) => {
-                            const isTicked = editComboSubjects.includes(choice.name);
-                            return (
-                              <label
-                                key={choice.name}
-                                className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-[10px] font-bold cursor-pointer ${
-                                  isTicked ? 'bg-white border-purple-500 text-purple-950' : 'bg-white/60 border-slate-200 text-slate-600'
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isTicked}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setEditComboSubjects((prev) => [...prev, choice.name]);
-                                    } else {
-                                      setEditComboSubjects((prev) => prev.filter((s) => s !== choice.name));
-                                    }
-                                  }}
-                                  className="w-3.5 h-3.5 rounded text-purple-600 accent-purple-600"
-                                />
-                                <span>{choice.icon}</span>
-                                <span className="truncate">{choice.name}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                        <div className="p-2 bg-amber-50/90 border border-dashed border-amber-300 rounded-xl">
-                          <span className="text-[10px] font-black text-amber-900 block mb-1">
-                            📦 Inside This Pack ({editComboSubjects.length} Books):
-                          </span>
-                          <div className="flex flex-wrap gap-1">
-                            {editComboSubjects.map((sub, i) => (
-                              <span
-                                key={sub}
-                                className="text-[9px] font-bold bg-white text-slate-800 border border-amber-200 px-1.5 py-0.5 rounded-md flex items-center gap-1"
-                              >
-                                <span>{i + 1}. {sub}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditComboSubjects((prev) => prev.filter((s) => s !== sub))}
-                                  className="text-slate-300 hover:text-red-500 cursor-pointer"
-                                >
-                                  ×
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-2 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                      <div>
-                        <label className="text-[11px] font-bold text-blue-900 block mb-0.5">Offer Price (₹)</label>
-                        <span className="text-[9px] text-blue-600 block mb-1">Customer selling price</span>
-                        <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          value={editPrice}
-                          onChange={(e) => setEditPrice(e.target.value === '' ? ('' as any) : Number(e.target.value))}
-                          className="w-full px-2 py-2 bg-white border border-blue-300 rounded-lg text-xs font-extrabold outline-none text-slate-900"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-0.5">MRP (₹)</label>
-                        <span className="text-[9px] text-slate-500 block mb-1">Original printed price</span>
-                        <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          value={editMrp}
-                          onChange={(e) => setEditMrp(e.target.value === '' ? ('' as any) : Number(e.target.value))}
-                          className="w-full px-2 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold outline-none text-slate-900"
-                        />
-                      </div>
-                    </div>
-                    {editMedium === 'Both' ? (
-                      <div className="bg-amber-50/60 p-3 rounded-xl border border-amber-100 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-bold text-amber-900 block">Copies by Medium</label>
-                          <span className="text-[10px] font-black text-slate-600 bg-white px-2 py-0.5 rounded border border-amber-200">
-                            Total: {Number(editStockTamil || 0) + Number(editStockEnglish || 0)}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <span className="text-[10px] font-bold text-amber-900 block mb-1">📘 தமிழ் (Tamil)</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={editStockTamil}
-                              onChange={(e) => setEditStockTamil(Math.max(0, Number(e.target.value) || 0))}
-                              className="w-full px-2 py-2 bg-white border border-amber-300 rounded-lg text-xs font-extrabold outline-none text-slate-900"
-                            />
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-bold text-emerald-900 block mb-1">📗 Eng Med</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={editStockEnglish}
-                              onChange={(e) => setEditStockEnglish(Math.max(0, Number(e.target.value) || 0))}
-                              className="w-full px-2 py-2 bg-white border border-emerald-300 rounded-lg text-xs font-extrabold outline-none text-slate-900"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-amber-50/60 p-3 rounded-xl border border-amber-100">
-                        <label className="text-[11px] font-bold text-amber-900 block mb-0.5">Copies in Rack</label>
-                        <span className="text-[9px] text-amber-700 block mb-1">Available warehouse inventory count</span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={editStock}
-                          onChange={(e) => setEditStock(Math.max(0, Number(e.target.value) || 0))}
-                          className="w-full px-2 py-2 bg-white border border-amber-300 rounded-lg text-xs font-extrabold outline-none text-slate-900"
-                        />
-                      </div>
-                    )}
-                    <label className="flex items-center gap-2 p-2.5 bg-purple-50/80 border border-purple-200 rounded-xl cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={editComingSoon}
-                        onChange={(e) => setEditComingSoon(e.target.checked)}
-                        className="w-4 h-4 text-purple-600 rounded border-purple-300"
-                      />
-                      <div>
-                        <span className="text-xs font-bold text-purple-900 block leading-tight">Mark as Coming Soon</span>
-                        <span className="text-[10px] text-purple-600">Disables purchasing, shows pre-launch banner</span>
-                      </div>
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleSaveEdit(p.id)}
-                      className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors text-center shadow-xs"
-                    >
-                      Save Changes
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingId(null)}
-                      className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <div key={p.id} className={`rounded-2xl border p-4 shadow-xs space-y-3 transition-colors ${isOOS ? 'bg-slate-100/90 border-slate-300 text-slate-500' : 'bg-white border-slate-200'}`}>
-                <div className="flex items-start gap-3">
-                  <img
-                    src={p.image}
-                    alt={p.title}
-                    className={`w-14 h-14 object-contain bg-slate-50 border border-slate-200 rounded-xl p-0.5 shrink-0 transition-all ${isOOS ? 'grayscale opacity-60' : ''}`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md text-[10px] border border-slate-200">
-                        {p.cls || 'General'}
-                      </span>
-                      {p.subject && (
-                        <span className="text-[11px] text-slate-500 font-medium">
-                          {p.subject}
-                        </span>
-                      )}
-                      {p.badge && (
-                        <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
-                          {p.badge}
-                        </span>
-                      )}
-                      {(() => {
-                        const mb = getProductMediumBadge(p.language);
-                        return (
-                          <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-md ${mb.pillClasses}`}>
-                            {mb.shortBadge}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                    <span className={`font-bold text-xs block mt-1 leading-snug ${isOOS ? 'text-slate-500 line-through decoration-slate-400' : 'text-slate-900'}`}>
-                      {p.title}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                    <span className="text-[10px] text-slate-500 block font-medium">Price</span>
-                    <div className="flex items-baseline gap-1.5 mt-0.5">
-                      <span className="font-extrabold text-sm text-slate-900">₹{p.price}</span>
-                      {p.mrp > p.price && (
-                        <span className="line-through text-xs text-slate-400">₹{p.mrp}</span>
-                      )}
-                    </div>
-                    {disc > 0 && (
-                      <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">
-                        {disc}% OFF
-                      </span>
-                    )}
-                  </div>
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-between">
-                    <span className="text-[10px] text-slate-500 block font-medium">Rack Stock</span>
-                    {(p.isComingSoon || p.is_coming_soon || p.status === 'coming_soon') ? (
-                      <span className="text-[10px] font-bold px-2 py-1 rounded-lg border bg-purple-50 text-purple-700 border-purple-200 text-center mt-1">
-                        COMING SOON
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStockStatus(p)}
-                        className={`text-[10px] font-bold px-2 py-1 rounded-lg border transition-colors cursor-pointer text-center mt-1 ${
-                          isOOS
-                            ? 'bg-red-50 text-red-600 border-red-200'
-                            : isLow
-                            ? 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
-                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        }`}
-                      >
-                        {isOOS ? 'OUT OF STOCK' : `${p.stock ?? '—'} IN RACK`}
-                      </button>
-                    )}
-                    {isProductMultiMedium(p.language) && (
-                      <div className="flex items-center gap-1 mt-1 justify-center flex-wrap">
-                        {(() => {
-                          const tQty = p.stockTamil ?? p.stock_tamil;
-                          const eQty = p.stockEnglish ?? p.stock_english;
-                          return (
-                            <>
-                              <span
-                                className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded border ${
-                                  tQty === 0
-                                    ? 'bg-slate-100 text-slate-400 border-slate-200 line-through'
-                                    : 'bg-amber-50 text-amber-900 border-amber-200'
-                                }`}
-                                title="Tamil Medium Copies"
-                              >
-                                தமிழ்: {tQty ?? '—'}
-                              </span>
-                              <span
-                                className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded border ${
-                                  eQty === 0
-                                    ? 'bg-slate-100 text-slate-400 border-slate-200 line-through'
-                                    : 'bg-emerald-50 text-emerald-900 border-emerald-200'
-                                }`}
-                                title="English Medium Copies"
-                              >
-                                Eng: {eQty ?? '—'}
-                              </span>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
-                    {heldCount > 0 && (
-                      <span className="text-[9px] text-blue-700 font-bold mt-1 block">
-                        {heldCount} on hold
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => handleStartEdit(p)}
-                    className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold cursor-pointer transition-colors"
-                  >
-                    Edit Publication
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onDeleteProduct(p.id)}
-                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                    title="Delete Publication"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Add New Publication Modal */}
+      {/* ADD / EDIT APPAREL MODAL WITH DYNAMIC SIZE & COMBO MATRIX */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 animate-scale-up max-h-[92vh] overflow-y-auto custom-scrollbar">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden max-h-[92vh] flex flex-col">
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <span className="text-[10px] font-bold tracking-widest text-blue-600 uppercase">
-                  Bookstore Inventory
+                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
+                  VR Men&apos;s Collection Editor
                 </span>
-                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-[#2874f0]" />
-                  <span>Publish New Guide to Catalog</span>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                  {editingProduct ? 'Edit Apparel Product & Sizes' : 'Add New Apparel to Store'}
                 </h3>
               </div>
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg cursor-pointer"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingProduct(null);
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSubmit(publishStatus);
-              }}
-              className="space-y-5 text-xs"
-            >
-              {/* SECTION 1: BOOK ESSENTIALS */}
-              <div className="space-y-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-200">
-                <div className="font-bold text-[11px] text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-[#2874f0]" />
-                  <span>1. Book Essentials</span>
-                </div>
+            {/* Modal Scrollable Body Form */}
+            <form onSubmit={handleSubmitProduct} className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+              
+              {/* SECTION 1: BASIC INFORMATION */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-4">
+                <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Package className="w-4 h-4 text-amber-500" />
+                  <span>1. Product Identity</span>
+                </h4>
 
-                {/* Title Input */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Book Title *
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Product Title *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. 10th Standard Mathematics Guide (Tamil & English Medium)"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-[#2874f0] text-slate-900 text-xs font-medium shadow-2xs"
+                    placeholder="e.g. Royal Oxford Pure Cotton Slim Fit Shirt"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold outline-none focus:border-amber-500"
                   />
-                </div>
-
-                {/* Standard & Subject Selectors */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Class Standard *
-                    </label>
-                    <select
-                      value={newCls}
-                      onChange={(e) => setNewCls(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-[#2874f0] text-slate-900 cursor-pointer font-semibold shadow-2xs"
-                    >
-                      {['6th', '7th', '8th', '9th', '10th', '11th', '12th'].map((c) => (
-                        <option key={c} value={c}>
-                          {c} Standard
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Subject (Dropdown Menu) *
-                    </label>
-                    <select
-                      value={selectedSubjectOption}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setSelectedSubjectOption(val);
-                        if (val === 'All-in-One Full Set (Combo)') {
-                          if (!newTitle || newTitle.includes('Guide') || newTitle.includes('Mathematics')) {
-                            setNewTitle(`${newCls} Standard All-in-One Complete Guide Combo Pack (${selectedComboSubjects.length} Books)`);
-                          }
-                          if (!newBadge) setNewBadge('Combo Set');
-                        }
-                      }}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-[#2874f0] text-slate-900 cursor-pointer font-semibold shadow-2xs"
-                    >
-                      {availableSubjects.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                      <option value="__custom__">+ Add Custom Subject...</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Medium / Language Selector */}
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Available Medium / Language *
-                  </label>
-                  <select
-                    value={newMedium}
-                    onChange={(e) => setNewMedium(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-[#2874f0] text-slate-900 cursor-pointer font-semibold shadow-2xs"
-                  >
-                    <option value="Both">Both Tamil &amp; English (Student can choose)</option>
-                    <option value="Tamil">Tamil Medium Only (தமிழ் வழி)</option>
-                    <option value="English">English Medium Only (ஆங்கில வழி)</option>
-                  </select>
-                  <p className="text-[10.5px] text-slate-500 mt-1">
-                    {newMedium === 'Both'
-                      ? '💡 When adding to cart, student can choose Tamil Medium or English Medium.'
-                      : newMedium === 'Tamil'
-                      ? '📘 Displayed as Tamil Medium only. Added directly to cart.'
-                      : '📗 Displayed as English Medium only. Added directly to cart.'}
-                  </p>
-                </div>
-
-                {/* Custom Subject Input */}
-                {selectedSubjectOption === '__custom__' && (
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Custom Subject Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Environmental Science / Hindi"
-                      value={customSubjectText}
-                      onChange={(e) => setCustomSubjectText(e.target.value)}
-                      className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-[#2874f0] text-slate-900 shadow-2xs"
-                    />
-                  </div>
-                )}
-
-                {/* ALL-IN-ONE COMBO SUBJECT CHECKLIST & LIVE BOX PREVIEW */}
-                {selectedSubjectOption === 'All-in-One Full Set (Combo)' && (
-                  <div className="mt-3 p-4 bg-gradient-to-br from-purple-50/90 via-slate-50 to-amber-50/60 border-2 border-purple-300 rounded-2xl space-y-3.5 shadow-2xs">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md">
-                          Combo Pack Configurator
-                        </span>
-                        <h4 className="font-extrabold text-sm text-slate-900 mt-1">
-                          Tick the Subjects Included in this Combo Set
-                        </h4>
-                        <p className="text-[10px] text-slate-600">
-                          Check each book that comes inside this set. The live box below shows exactly what customers see.
-                        </p>
-                      </div>
-                      <span className="text-xs font-black text-purple-900 bg-purple-200/90 px-3 py-1 rounded-full border border-purple-300 shadow-2xs">
-                        {selectedComboSubjects.length} Books Selected
-                      </span>
-                    </div>
-
-                    {/* Quick Presets */}
-                    <div>
-                      <span className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block mb-1.5">
-                        ⚡ 1-Click Fast Presets:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {COMBO_PRESETS.map((preset) => (
-                          <button
-                            key={preset.label}
-                            type="button"
-                            onClick={() => {
-                              setSelectedComboSubjects([...preset.subjects]);
-                              if (preset.cls && newCls !== preset.cls) {
-                                setNewCls(preset.cls);
-                              }
-                              if (!newTitle || newTitle.includes('Combo') || newTitle.includes('All-in-One')) {
-                                setNewTitle(`${preset.cls} Standard All-in-One Complete Combo Guide (${preset.subjects.length} Books)`);
-                              }
-                            }}
-                            className="text-[10px] font-bold px-2.5 py-1 bg-white hover:bg-purple-100 text-purple-950 border border-purple-200 rounded-lg cursor-pointer transition-colors shadow-2xs active:scale-95"
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => setSelectedComboSubjects(STANDARD_COMBO_CHOICES.map(c => c.name))}
-                          className="text-[10px] font-bold px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg cursor-pointer shadow-2xs"
-                        >
-                          Select All
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedComboSubjects([])}
-                          className="text-[10px] font-bold px-2.5 py-1 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-lg cursor-pointer shadow-2xs"
-                        >
-                          Clear All
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Subject Checkbox Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-                      {STANDARD_COMBO_CHOICES.map((choice) => {
-                        const isTicked = selectedComboSubjects.includes(choice.name);
-                        return (
-                          <label
-                            key={choice.name}
-                            className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
-                              isTicked
-                                ? 'bg-white border-purple-500 text-purple-950 shadow-2xs ring-1 ring-purple-400/40'
-                                : 'bg-white/70 border-slate-200 text-slate-600 hover:bg-white'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isTicked}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedComboSubjects((prev) => [...prev, choice.name]);
-                                } else {
-                                  setSelectedComboSubjects((prev) => prev.filter((s) => s !== choice.name));
-                                }
-                              }}
-                              className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer accent-purple-600"
-                            />
-                            <span className="text-sm shrink-0">{choice.icon}</span>
-                            <div className="min-w-0 flex-1 leading-tight">
-                              <span className="block truncate text-[11px] font-bold">{choice.name}</span>
-                              {choice.tamilName && (
-                                <span className="block text-[9px] text-slate-400 font-tamil truncate">{choice.tamilName}</span>
-                              )}
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
-
-                    {/* Custom subject write-in */}
-                    <div className="flex items-center gap-2 pt-1">
-                      <input
-                        type="text"
-                        placeholder="Add extra custom subject book to combo..."
-                        value={customComboSubjectInput}
-                        onChange={(e) => setCustomComboSubjectInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const val = customComboSubjectInput.trim();
-                            if (val && !selectedComboSubjects.includes(val)) {
-                              setSelectedComboSubjects((prev) => [...prev, val]);
-                              setCustomComboSubjectInput('');
-                            }
-                          }
-                        }}
-                        className="flex-1 px-3 py-1.5 bg-white border border-purple-200 rounded-lg text-xs outline-none text-slate-900"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const val = customComboSubjectInput.trim();
-                          if (val && !selectedComboSubjects.includes(val)) {
-                            setSelectedComboSubjects((prev) => [...prev, val]);
-                            setCustomComboSubjectInput('');
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-2xs"
-                      >
-                        + Add Book
-                      </button>
-                    </div>
-
-                    {/* THE BOX SHOWING THE SELECTED SUBJECTS */}
-                    <div className="bg-gradient-to-br from-amber-50 to-orange-50/70 border-2 border-dashed border-amber-300 rounded-2xl p-4 space-y-3 shadow-2xs">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">📦</span>
-                          <div>
-                            <h5 className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
-                              <span>What&apos;s Inside This Complete Combo Pack</span>
-                              <span className="text-[10px] bg-amber-400 text-slate-900 px-2 py-0.5 rounded-full font-black">
-                                {selectedComboSubjects.length} IN 1
-                              </span>
-                            </h5>
-                            <span className="text-[10px] text-slate-500">
-                              Live storefront box preview — updates in real time as you tick subjects
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {selectedComboSubjects.length === 0 ? (
-                        <div className="text-center py-4 bg-white/80 rounded-xl border border-amber-200">
-                          <p className="text-xs font-bold text-amber-900">⚠️ No subjects ticked yet</p>
-                          <p className="text-[10px] text-slate-500">Please tick at least 1 subject checkbox above</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {selectedComboSubjects.map((subName, i) => {
-                            const def = ALL_COMBO_SUBJECT_DEFINITIONS[subName.toLowerCase().trim()];
-                            const icon = def?.icon || '📖';
-                            const tamil = def?.tamilName || '';
-                            return (
-                              <div
-                                key={subName}
-                                className="flex items-center gap-2 p-2 bg-white rounded-xl border border-amber-200 shadow-2xs"
-                              >
-                                <span className="text-base shrink-0">{icon}</span>
-                                <div className="min-w-0 flex-1">
-                                  <span className="text-[11px] font-bold text-slate-900 block truncate">
-                                    {i + 1}. {subName}
-                                  </span>
-                                  {tamil && (
-                                    <span className="text-[9px] text-slate-400 font-tamil block truncate">{tamil}</span>
-                                  )}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedComboSubjects((prev) => prev.filter((s) => s !== subName))}
-                                  className="text-slate-300 hover:text-red-500 p-0.5 rounded cursor-pointer"
-                                  title="Remove from combo"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* SECTION 2: PRICING & INVENTORY (Price Safety First) */}
-              <div className="space-y-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-200">
-                <div className="font-bold text-[11px] text-slate-800 uppercase tracking-wider flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>2. Pricing &amp; Stock Inventory</span>
-                  </div>
-                  {numMrp > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setNewPrice(String(numMrp))}
-                      className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer"
-                    >
-                      Sell at Full MRP (₹{numMrp})
-                    </button>
-                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Printed MRP */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Printed MRP (₹) *
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Category *
+                    </label>
+                    <select
+                      value={formCategory}
+                      onChange={(e) => {
+                        const cat = e.target.value;
+                        setFormCategory(cat);
+                        if (cat === 'combos') {
+                          setFormIsCombo(true);
+                          handlePresetChange('combo');
+                        } else if (['trousers', 'jeans'].includes(cat)) {
+                          handlePresetChange('bottom');
+                        } else {
+                          handlePresetChange('top');
+                        }
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold outline-none"
+                    >
+                      {APPAREL_CATEGORIES.map((c) => (
+                        <option key={c.slug} value={c.slug}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Base Offer Price (₹) *
                     </label>
                     <input
                       type="number"
                       required
-                      step="any"
                       min={0}
-                      placeholder="e.g. 350"
-                      value={newMrp}
-                      onChange={(e) => setNewMrp(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-[#2874f0] text-slate-900 font-bold shadow-2xs"
+                      value={formBasePrice}
+                      onChange={(e) => setFormBasePrice(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold outline-none"
                     />
                   </div>
 
-                  {/* Offer / Selling Price (Protected against silent 0) */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Selling / Offer Price (₹) *
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Base Printed MRP (₹) *
                     </label>
                     <input
                       type="number"
                       required
-                      step="any"
                       min={0}
-                      placeholder="e.g. 280"
-                      value={newPrice}
-                      onChange={(e) => setNewPrice(e.target.value)}
-                      className={`w-full px-3.5 py-2.5 bg-white border rounded-xl outline-none font-bold shadow-2xs ${
-                        priceError
-                          ? 'border-red-400 focus:border-red-600 text-red-700'
-                          : 'border-slate-200 focus:border-[#2874f0] text-slate-900'
-                      }`}
+                      value={formBaseMrp}
+                      onChange={(e) => setFormBaseMrp(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold outline-none"
                     />
                   </div>
-
-                  {/* Initial Copies */}
-                  {newMedium === 'Both' ? (
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block font-bold text-slate-700">
-                          Copies by Medium *
-                        </label>
-                        <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                          Total: {Number(newStockTamil || 0) + Number(newStockEnglish || 0)}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <div>
-                          <span className="text-[9.5px] font-bold text-amber-900 block mb-0.5">தமிழ் வழி</span>
-                          <input
-                            type="number"
-                            required
-                            min={0}
-                            placeholder="Tamil"
-                            value={newStockTamil}
-                            onChange={(e) => setNewStockTamil(e.target.value)}
-                            className="w-full px-2.5 py-2 bg-white border border-amber-300 rounded-xl outline-none focus:border-[#2874f0] text-slate-900 font-bold text-xs shadow-2xs"
-                          />
-                        </div>
-                        <div>
-                          <span className="text-[9.5px] font-bold text-emerald-900 block mb-0.5">English</span>
-                          <input
-                            type="number"
-                            required
-                            min={0}
-                            placeholder="Eng"
-                            value={newStockEnglish}
-                            onChange={(e) => setNewStockEnglish(e.target.value)}
-                            className="w-full px-2.5 py-2 bg-white border border-emerald-300 rounded-xl outline-none focus:border-[#2874f0] text-slate-900 font-bold text-xs shadow-2xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">
-                        Initial Copies in Rack ({newMedium === 'English' ? 'English Medium' : 'Tamil Medium'}) *
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        min={0}
-                        value={newStock}
-                        onChange={(e) => setNewStock(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-[#2874f0] text-slate-900 font-bold shadow-2xs"
-                      />
-                    </div>
-                  )}
                 </div>
 
-                {/* Inline Price Validation & Live Discount Banner */}
-                {priceError ? (
-                  <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-[11px] text-red-700 font-bold flex items-center gap-1.5">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-                    <span>{priceError}</span>
-                  </div>
-                ) : isSuspiciousDiscount ? (
-                  <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-[11px] text-amber-900 font-bold flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
-                    <span>⚠️ Unusually deep discount: {discountPercent}% OFF (Selling for ₹{numPrice} on ₹{numMrp} MRP). Please verify.</span>
-                  </div>
-                ) : (
-                  <div className="p-2.5 bg-white rounded-xl border border-slate-200 text-[11px] flex items-center justify-between">
-                    <span className="text-slate-600 font-medium">Customer Storefront Price:</span>
-                    {discountPercent > 0 ? (
-                      <span className="font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
-                        ₹{numPrice} • {discountPercent}% OFF (Save ₹{numMrp - numPrice})
-                      </span>
-                    ) : (
-                      <span className="font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
-                        ₹{numMrp} (Full MRP — No Discount)
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Mark as Coming Soon Toggle */}
-                <label className="flex items-center gap-2.5 p-3 bg-purple-50/80 border border-purple-200 rounded-xl cursor-pointer hover:bg-purple-100/70 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={newComingSoon}
-                    onChange={(e) => setNewComingSoon(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 rounded border-purple-300 accent-purple-600 cursor-pointer"
-                  />
+                {/* Fabric & Fit Details */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                   <div>
-                    <span className="text-xs font-bold text-purple-950 block leading-tight">Mark as Coming Soon (Pre-launch)</span>
-                    <span className="text-[11px] text-purple-700">Display with a &ldquo;Coming Soon&rdquo; badge on storefront. Purchasing disabled until stock arrives.</span>
+                    <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1 text-[11px]">
+                      Fabric Material
+                    </label>
+                    <input
+                      type="text"
+                      value={formFabric}
+                      onChange={(e) => setFormFabric(e.target.value)}
+                      placeholder="e.g. 100% Cotton"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold"
+                    />
                   </div>
-                </label>
+                  <div>
+                    <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1 text-[11px]">
+                      Fit
+                    </label>
+                    <input
+                      type="text"
+                      value={formFit}
+                      onChange={(e) => setFormFit(e.target.value)}
+                      placeholder="e.g. Slim Fit"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1 text-[11px]">
+                      Sleeve
+                    </label>
+                    <input
+                      type="text"
+                      value={formSleeve}
+                      onChange={(e) => setFormSleeve(e.target.value)}
+                      placeholder="e.g. Full Sleeve"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1 text-[11px]">
+                      Pattern
+                    </label>
+                    <input
+                      type="text"
+                      value={formPattern}
+                      onChange={(e) => setFormPattern(e.target.value)}
+                      placeholder="e.g. Solid / Checked"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* SECTION 3: BOOK COVER IMAGE UPLOAD */}
-              <div className="space-y-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-200">
-                <div className="font-bold text-[11px] text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-[#2874f0]" />
-                  <span>3. Book Cover Photo (Device Gallery Upload)</span>
-                </div>
+              {/* SECTION 2: PRODUCT PHOTOS UPLOAD */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <ImageIcon className="w-4 h-4 text-amber-500" />
+                  <span>2. Product Photography Gallery</span>
+                </h4>
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={handleDeviceImageUpload}
-                  className="hidden"
-                />
-
-                {newImage ? (
-                  <div className="flex items-center gap-4 p-3 bg-white border border-blue-200 rounded-2xl shadow-2xs">
-                    <img
-                      src={newImage}
-                      alt="Cover Preview"
-                      className="w-16 h-20 object-contain bg-slate-50 rounded-xl border border-slate-200 p-1 shadow-xs"
-                    />
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-xs">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>Cover Photo Ready</span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 truncate max-w-[240px]">{newImage}</p>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="text-xs text-[#2874f0] font-bold hover:underline cursor-pointer block"
-                      >
-                        Change Photo
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setNewImage('')}
-                      className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg cursor-pointer"
-                      title="Remove image"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-300 hover:border-[#2874f0] bg-white hover:bg-blue-50/20 rounded-2xl p-6 text-center cursor-pointer transition-all space-y-2 group"
-                  >
-                    {imageUploading ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <RefreshCw className="w-6 h-6 text-[#2874f0] animate-spin" />
-                        <span className="font-bold text-slate-700">Uploading cover image...</span>
-                      </div>
+                <div className="flex flex-col sm:flex-row gap-4 items-start">
+                  {/* Primary Photo Preview */}
+                  <div className="w-24 h-28 rounded-xl bg-slate-200 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 overflow-hidden relative shrink-0 flex items-center justify-center">
+                    {formPrimaryImage ? (
+                      <img src={formPrimaryImage} alt="Cover" className="w-full h-full object-cover" />
                     ) : (
-                      <>
-                        <div className="w-10 h-10 rounded-full bg-blue-50 text-[#2874f0] flex items-center justify-center mx-auto group-hover:scale-110 transition-transform border border-blue-100">
-                          <Upload className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <span className="font-bold text-slate-800 text-xs block">
-                            Tap to upload book cover photo
-                          </span>
-                          <span className="text-[11px] text-slate-400">
-                            PNG, JPG, WebP up to 10MB (Free 25GB Storage)
-                          </span>
-                        </div>
-                      </>
+                      <span className="text-[10px] text-slate-400 text-center px-1">No Cover</span>
                     )}
                   </div>
-                )}
 
-                {/* Sample Pages PDF Upload (Preview Before Buying) */}
-                <div className="pt-3 border-t border-slate-200">
-                  <div className="font-bold text-[11px] text-slate-800 uppercase tracking-wider flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-purple-600" />
-                      <span>Sample Pages PDF (Preview Before Buying)</span>
+                  <div className="flex-1 space-y-2">
+                    <label className="block font-bold text-slate-700 dark:text-slate-300">
+                      Primary Cover Photo URL or Upload *
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Paste image link or click upload"
+                        value={formPrimaryImage}
+                        onChange={(e) => setFormPrimaryImage(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                      />
+                      <label className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{imageUploading ? 'Uploading...' : 'Upload'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(e, true)}
+                        />
+                      </label>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-normal">Optional · Max 25MB</span>
+                    <p className="text-[10.5px] text-slate-400">
+                      Upload front, model fit, or high-res apparel photos.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: DYNAMIC SIZE & PRICING MATRIX (THE USER'S REQUEST!) */}
+              <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border-2 border-amber-300/80 dark:border-amber-800 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="font-extrabold text-xs uppercase tracking-wider text-amber-900 dark:text-amber-400 flex items-center gap-1.5">
+                      <Ruler className="w-4 h-4" />
+                      <span>3. Size Matrix &amp; Dynamic Pricing (Flipkart Style)</span>
+                    </h4>
+                    <p className="text-[10.5px] text-slate-600 dark:text-slate-400">
+                      Tick ONLY the sizes available for this product. You can set a custom price &amp; stock per size!
+                    </p>
                   </div>
 
-                  <input
-                    ref={pdfInputRef}
-                    type="file"
-                    accept="application/pdf,.pdf"
-                    onChange={handleDevicePdfUpload}
-                    className="hidden"
-                  />
+                  {/* 1-Click fast copy */}
+                  <button
+                    type="button"
+                    onClick={handleApplyBasePriceToAllSizes}
+                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[11px] self-start sm:self-auto cursor-pointer"
+                  >
+                    Copy Base Price to All Checked Sizes
+                  </button>
+                </div>
 
-                  {newSamplePdf ? (
-                    <div className="flex items-center justify-between p-3 bg-purple-50/70 border border-purple-200 rounded-xl">
-                      <div className="flex items-center gap-2.5">
-                        <FileText className="w-6 h-6 text-purple-600 shrink-0" />
-                        <div>
-                          <div className="text-xs font-bold text-purple-900 flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Sample Pages PDF Ready</span>
+                {/* Preset switch buttons */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handlePresetChange('top')}
+                    className={`px-3 py-1 rounded-md text-[11px] font-bold ${
+                      sizePresetType === 'top'
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 border'
+                    }`}
+                  >
+                    Shirts / T-Shirts (S, M, L, XL, XXL)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePresetChange('bottom')}
+                    className={`px-3 py-1 rounded-md text-[11px] font-bold ${
+                      sizePresetType === 'bottom'
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 border'
+                    }`}
+                  >
+                    Trousers / Jeans (28, 30, 32, 34, 36)
+                  </button>
+                </div>
+
+                {/* Size Matrix Grid */}
+                <div className="space-y-2.5">
+                  {Object.keys(sizeVariants).map((sizeKey) => {
+                    const v = sizeVariants[sizeKey];
+                    return (
+                      <div
+                        key={sizeKey}
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border transition ${
+                          v.enabled
+                            ? 'bg-white dark:bg-slate-800 border-amber-400 shadow-sm'
+                            : 'bg-slate-100/60 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 opacity-60'
+                        }`}
+                      >
+                        {/* Checkbox to tick this size */}
+                        <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={v.enabled}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setSizeVariants((prev) => ({
+                                ...prev,
+                                [sizeKey]: { ...prev[sizeKey], enabled: checked },
+                              }));
+                            }}
+                            className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                          />
+                          <span className={`font-black text-sm ${v.enabled ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
+                            Size {sizeKey}
+                          </span>
+                        </label>
+
+                        {/* If ticked, show price, MRP, and stock inputs */}
+                        {v.enabled ? (
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-slate-500 text-[11px] font-medium">Selling ₹:</span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={v.price}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value) || 0;
+                                  setSizeVariants((prev) => ({
+                                    ...prev,
+                                    [sizeKey]: { ...prev[sizeKey], price: val },
+                                  }));
+                                }}
+                                className="w-20 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-bold"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-slate-500 text-[11px] font-medium">MRP ₹:</span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={v.mrp}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value) || 0;
+                                  setSizeVariants((prev) => ({
+                                    ...prev,
+                                    [sizeKey]: { ...prev[sizeKey], mrp: val },
+                                  }));
+                                }}
+                                className="w-20 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-bold"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-slate-500 text-[11px] font-medium">Stock:</span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={v.stock}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value) || 0;
+                                  setSizeVariants((prev) => ({
+                                    ...prev,
+                                    [sizeKey]: { ...prev[sizeKey], stock: val },
+                                  }));
+                                }}
+                                className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-bold text-center"
+                              />
+                            </div>
                           </div>
-                          <a
-                            href={newSamplePdf}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-purple-700 hover:underline inline-flex items-center gap-1 mt-0.5"
-                          >
-                            <span>Open PDF Preview</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">Unticked (Size not available)</span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1">
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SECTION 4: 3 DRESS IN ONE COMBO PACK BUILDER */}
+              <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formIsCombo}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setFormIsCombo(checked);
+                        if (checked) {
+                          setFormCategory('combos');
+                          setFormBadge('3-in-1 Combo');
+                        }
+                      }}
+                      className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    />
+                    <span className="font-extrabold text-xs uppercase tracking-wider text-purple-950 dark:text-purple-300 flex items-center gap-1.5">
+                      <Layers className="w-4 h-4" />
+                      <span>This Product is a Combo Pack (e.g. 3 Dress in One Product)</span>
+                    </span>
+                  </label>
+                </div>
+
+                {formIsCombo && (
+                  <div className="space-y-2.5 pt-2">
+                    <p className="text-[10.5px] text-slate-600 dark:text-slate-400">
+                      List the individual garments included inside this combo bundle:
+                    </p>
+                    {formComboItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-md bg-purple-200 text-purple-900 flex items-center justify-center font-bold text-xs shrink-0">
+                          {idx + 1}
+                        </span>
+                        <input
+                          type="text"
+                          value={item}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormComboItems((prev) => prev.map((it, i) => (i === idx ? val : it)));
+                          }}
+                          placeholder={`Included dress #${idx + 1}`}
+                          className="flex-1 px-3 py-1.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-900 font-semibold"
+                        />
                         <button
                           type="button"
-                          onClick={() => pdfInputRef.current?.click()}
-                          className="text-xs text-purple-700 font-bold px-2.5 py-1 hover:bg-purple-100 rounded-lg cursor-pointer"
-                        >
-                          Change
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setNewSamplePdf('')}
-                          className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg cursor-pointer"
-                          title="Remove PDF"
+                          onClick={() => setFormComboItems((prev) => prev.filter((_, i) => i !== idx))}
+                          className="p-1 text-slate-400 hover:text-red-500"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={pdfUploading}
-                      onClick={() => pdfInputRef.current?.click()}
-                      className="w-full py-2.5 px-3 bg-white border border-dashed border-purple-300 hover:border-purple-500 rounded-xl text-center cursor-pointer transition-all flex items-center justify-center gap-2 text-purple-700 hover:bg-purple-50/50"
-                    >
-                      {pdfUploading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-                          <span className="font-bold text-xs">Uploading PDF...</span>
-                        </>
-                      ) : (
-                        <>
-                          <FileText className="w-4 h-4 text-purple-600" />
-                          <span className="font-bold text-xs">Upload Sample Pages PDF (e.g. Chapter 1)</span>
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-              </div>
+                    ))}
 
-              {/* LIVE STOREFRONT PREVIEW CARD */}
-              <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-2.5 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[11px] text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Eye className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Live Storefront Card Preview</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400">How students see this book</span>
-                </div>
-
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="w-14 h-18 bg-white border border-slate-200 rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
-                    {newImage ? (
-                      <img src={newImage} alt="Preview" className="w-full h-full object-contain p-1" />
-                    ) : (
-                      <BookOpen className="w-6 h-6 text-slate-300" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="bg-blue-100 text-[#2874f0] text-[9px] font-bold px-2 py-0.5 rounded">
-                        {newCls} Standard
-                      </span>
-                      {newComingSoon ? (
-                        <span className="bg-purple-100 text-purple-700 text-[9px] font-bold px-2 py-0.5 rounded border border-purple-200">
-                          COMING SOON
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 text-[10px]">★ 5.0 (New)</span>
-                      )}
-                    </div>
-                    <p className="font-bold text-xs text-slate-900 truncate">
-                      {newTitle || 'Guide Book Title'}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900 font-mono">
-                        ₹{numPrice > 0 ? numPrice : (numMrp || 0)}
-                      </span>
-                      {discountPercent > 0 && (
-                        <>
-                          <span className="line-through text-slate-400 text-xs">₹{numMrp}</span>
-                          <span className="text-[10px] font-bold text-emerald-600">{discountPercent}% OFF</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 4: ADVANCED COMPLIANCE & SEO (Collapsible) */}
-              <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50/50">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="w-full px-4 py-3 flex items-center justify-between text-slate-700 hover:bg-slate-100 text-xs font-bold cursor-pointer"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-slate-500" />
-                    <span>Advanced &amp; Compliance Details (HSN, Low Stock Alert, SEO)</span>
-                  </div>
-                  {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-
-                {showAdvanced && (
-                  <div className="p-4 pt-1 space-y-3 bg-white border-t border-slate-200">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">
-                          GST HSN Code
-                        </label>
-                        <input
-                          type="text"
-                          value={hsnCode}
-                          onChange={(e) => setHsnCode(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono font-bold text-slate-700"
-                        />
-                        <span className="text-[10px] text-slate-400 block mt-0.5">HSN 4901 (0% GST Exempt Books)</span>
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">
-                          Low Stock Alert Threshold
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={lowStockThreshold}
-                          onChange={(e) => setLowStockThreshold(Number(e.target.value) || 5)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700"
-                        />
-                        <span className="text-[10px] text-slate-400 block mt-0.5">Triggers dashboard alert below {lowStockThreshold} copies</span>
-                      </div>
+                    <div className="flex gap-2 pt-1">
+                      <input
+                        type="text"
+                        placeholder="Add another garment (e.g. 1x Sky Blue Linen Shirt)"
+                        value={newComboItemText}
+                        onChange={(e) => setNewComboItemText(e.target.value)}
+                        className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newComboItemText.trim()) {
+                            setFormComboItems((prev) => [...prev, newComboItemText.trim()]);
+                            setNewComboItemText('');
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-purple-600 text-white font-bold rounded-lg text-xs"
+                      >
+                        Add Item
+                      </button>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* MODAL FOOTER: Draft vs Publish Buttons */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100 gap-3">
+              {/* SECTION 5: DESCRIPTION */}
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Product Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
+                  placeholder="Describe the styling, weave, comfort, occasion, and fabric quality..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   Cancel
                 </button>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={isSubmitting || imageUploading || !!priceError}
-                    onClick={() => handleSubmit('draft')}
-                    className="px-4 py-2.5 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    Save as Draft
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isSubmitting || imageUploading || !!priceError}
-                    onClick={() => handleSubmit('published')}
-                    className="px-6 py-2.5 rounded-xl font-bold text-white bg-[#2874f0] hover:bg-blue-700 transition-colors cursor-pointer shadow-md disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'Publishing…' : 'Publish Publication'}
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-600 text-white font-bold rounded-xl shadow-md"
+                >
+                  {editingProduct ? 'Save Changes' : 'Publish Product to Store'}
+                </button>
               </div>
+
             </form>
           </div>
         </div>
       )}
     </div>
   );
-};
+}
 
 export default CatalogSection;
+

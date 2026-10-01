@@ -513,7 +513,7 @@ export default function CheckoutPage() {
     }
     if (orderSubmitLock.current || isPlacingOrder || !user) return;
     if (!isMoqSatisfied(cart)) {
-      showToast(`Minimum order quantity is ${MIN_BOOKS_PER_ORDER} book(s) (or 1 Combo Pack).`);
+      showToast('Please add at least 1 item to proceed to payment.');
       return;
     }
     orderSubmitLock.current = true;
@@ -580,7 +580,7 @@ export default function CheckoutPage() {
 
     try {
       if (!idempotencyKeyRef.current) {
-        idempotencyKeyRef.current = `bpg-${user.id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        idempotencyKeyRef.current = `vr-${user.id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       }
       const baseAmount = checkoutTotal > 0 ? checkoutTotal : cartGrandTotal > 0 ? cartGrandTotal : cartTotal;
       const finalAmount = Math.max(1, baseAmount - effectiveDiscount);
@@ -791,8 +791,8 @@ export default function CheckoutPage() {
         key: rzpData.key,
         amount: rzpData.amount,
         currency: rzpData.currency || 'INR',
-        name: 'Blessing Power Guide',
-        description: 'Quality Educational Guides Purchase',
+        name: "VR Men's Wear",
+        description: 'Premium Menswear Order Payment',
         image: '/logo.png',
         order_id: rzpData.orderId,
         prefill: {
@@ -1201,7 +1201,8 @@ export default function CheckoutPage() {
               <div className="space-y-2">
                 {cart.map((item) => {
                   const stockState = getCartItemStockState(item, products);
-                  const itemKey = `${item.id}::${item.selectedMedium || 'default'}`;
+                  const itemKey = `${item.id}::${item.selectedSize || item.selectedMedium || 'std'}`;
+                  const sizeLabel = item.selectedSize || item.selectedMedium || 'Standard';
                   return (
                     <div
                       key={itemKey}
@@ -1210,36 +1211,30 @@ export default function CheckoutPage() {
                       }`}
                     >
                       <Image
-                        src={item.image || '/logo.png'}
+                        src={item.image || 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=120&q=80'}
                         alt=""
                         width={48}
                         height={48}
-                        className="w-12 h-12 object-contain bg-slate-50 rounded-lg"
+                        className="w-12 h-12 object-cover bg-slate-100 rounded-lg"
                         unoptimized={imageNeedsUnoptimized(item.image || '')}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="font-bold text-slate-900 truncate">{item.title}</p>
-                          {item.selectedMedium && (
-                            <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 ${
-                              item.selectedMedium.toLowerCase().includes('tamil')
-                                ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                                : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
-                            }`}>
-                              {item.selectedMedium}
-                            </span>
-                          )}
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                            Size: {sizeLabel}
+                          </span>
                         </div>
                         <p className="text-slate-500">
-                          Qty {item.qty} · ₹{item.price * item.qty}
+                          Qty {item.qty} · ₹{item.price * item.qty} (₹{item.price} each)
                         </p>
                         {!stockState.inStock ? (
                           <p className="text-[10px] font-bold text-red-600 mt-0.5 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" /> Out of stock — go back to cart to remove
+                            <AlertTriangle className="w-3 h-3" /> Out of stock in size {sizeLabel} — go back to cart to remove
                           </p>
                         ) : stockState.overLimit ? (
                           <p className="text-[10px] font-bold text-amber-600 mt-0.5 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" /> Only {stockState.stock} available
+                            <AlertTriangle className="w-3 h-3" /> Only {stockState.stock} available in size {sizeLabel}
                           </p>
                         ) : null}
                       </div>
@@ -1252,22 +1247,20 @@ export default function CheckoutPage() {
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-xs">
                 {shippingFee === 0 ? (
                   <p className="font-bold flex items-center gap-1 text-emerald-700">
-                    <Check className="w-4 h-4 text-emerald-600" /> 🎉 FREE Doorstep Delivery Unlocked! {cartHasCombo(cart) ? '(Combo Pack Offer)' : `(${cartCount} books)`}
+                    <Check className="w-4 h-4 text-emerald-600" /> 🎉 FREE Doorstep Delivery Unlocked! {cartHasCombo(cart) ? '(3-in-1 Combo Pack Offer)' : `(Order > ₹999)`}
                   </p>
                 ) : (
                   <p className="font-medium">
-                    📦 Delivery Charge: <strong>₹150</strong> ({cartCount} books). Add{' '}
-                    <strong>{5 - cartCount} more guide(s)</strong> (or 1 Combo Pack) for <strong>FREE Delivery</strong>!
+                    📦 Delivery Charge: <strong>₹{shippingFee}</strong>. Add{' '}
+                    <strong>₹{Math.max(0, 999 - cartTotal)} more</strong> for <strong>FREE Delivery</strong>!
                   </p>
                 )}
               </div>
 
-
-
               {/* Breakdown */}
               <div className="space-y-1.5 pt-2 border-t text-slate-600">
                 <div className="flex justify-between">
-                  <span>Books Subtotal ({cartCount} qty)</span>
+                  <span>Items Subtotal ({cartCount} qty)</span>
                   <span>₹{cartTotal}</span>
                 </div>
                 <div className="flex justify-between">
@@ -1333,25 +1326,32 @@ export default function CheckoutPage() {
               <div className="space-y-2">
                 {cart.map((item) => {
                   const stockState = getCartItemStockState(item, products);
+                  const itemKey = `${item.id}::${item.selectedSize || item.selectedMedium || 'std'}`;
+                  const sizeLabel = item.selectedSize || item.selectedMedium || 'Standard';
                   return (
                     <div
-                      key={item.id}
+                      key={itemKey}
                       className={`flex gap-3 items-center border rounded-xl p-3 ${
                         stockState.blocking ? 'border-red-300 bg-red-50/40' : 'border-slate-100'
                       }`}
                     >
                       <Image
-                        src={item.image || '/logo.png'}
+                        src={item.image || 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=120&q=80'}
                         alt=""
                         width={48}
                         height={48}
-                        className="w-12 h-12 object-contain bg-slate-50 rounded-lg"
+                        className="w-12 h-12 object-cover bg-slate-100 rounded-lg"
                         unoptimized={imageNeedsUnoptimized(item.image || '')}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-900 truncate">{item.title}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-bold text-slate-900 truncate">{item.title}</p>
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                            Size: {sizeLabel}
+                          </span>
+                        </div>
                         <p className="text-slate-500">
-                          Qty {item.qty} · ₹{item.price * item.qty}
+                          Qty {item.qty} · ₹{item.price * item.qty} (₹{item.price} each)
                         </p>
                         {!stockState.inStock ? (
                           <p className="text-[10px] font-bold text-red-600 mt-0.5 flex items-center gap-1">

@@ -282,7 +282,7 @@ function AdminPageInner() {
               const flashTimer = setInterval(() => {
                 flashCount++;
                 document.title = flashCount % 2 === 1
-                  ? `🔔 (${newcomers.length}) NEW ORDER! | Blessing Admin`
+                  ? `🔔 (${newcomers.length}) NEW ORDER! | VR Admin`
                   : originalTitle;
                 if (flashCount >= 10) {
                   clearInterval(flashTimer);
@@ -688,7 +688,7 @@ function AdminPageInner() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `Blessing_Power_Guide_GST_Ledger_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `VR_Mens_Collection_GST_Ledger_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -705,9 +705,9 @@ function AdminPageInner() {
       <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4">
         <div className="bg-white p-8 rounded-3xl border border-slate-200 max-w-md w-full text-center space-y-4 shadow-xl">
           <BrandLogo size={56} className="mx-auto shadow-md" />
-          <h1 className="font-bold text-xl text-slate-900">Blessing Power Guide — Staff Portal</h1>
+          <h1 className="font-bold text-xl text-slate-900">VR Men's Wear — Staff Portal</h1>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Administrator authentication required to manage bookstore orders, book inventory, and courier dispatches.
+            Administrator authentication required to manage clothing orders, size inventory, and courier dispatches.
           </p>
           <button
             type="button"

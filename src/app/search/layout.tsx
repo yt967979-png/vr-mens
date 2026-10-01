@@ -1,20 +1,20 @@
 import type { Metadata } from 'next';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://blessingpowerguide.in';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vrmenswear.in';
 
 export const metadata: Metadata = {
-  title: 'Search Catalog & Exam Guides | Blessing Power Guide',
+  title: "Search Men's Fashion Catalog | VR Men's Wear",
   description:
-    'Browse and search Blessing Power Guide publications for Class 6th to 12th standard. Find Tamil Nadu State Board & CBSE question banks, guides, and study materials.',
+    "Explore premium shirts, t-shirts, denim jeans, tailored trousers, ethnic kurtas, and 3-in-1 combo packs at VR Men's Wear.",
   alternates: {
     canonical: `${siteUrl}/search`,
   },
   openGraph: {
-    title: 'Search Catalog & Exam Guides | Blessing Power Guide',
+    title: "Search Men's Fashion Catalog | VR Men's Wear",
     description:
-      'Browse and search Blessing Power Guide publications for Class 6th to 12th standard. Tamil Nadu State Board & CBSE guides.',
+      "Explore premium shirts, t-shirts, denim jeans, tailored trousers, ethnic kurtas, and 3-in-1 combo packs at VR Men's Wear.",
     url: `${siteUrl}/search`,
-    siteName: 'Blessing Power Guide',
+    siteName: "VR Men's Wear",
     type: 'website',
   },
 };

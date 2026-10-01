@@ -1,5 +1,5 @@
-const LIVE_ORIGIN = 'https://blessingpowerguide.in';
-const UNRESOLVED_HOSTS = new Set(['blessingpowerguide.com', 'www.blessingpowerguide.com']);
+const LIVE_ORIGIN = 'https://vrmenswear.in';
+const UNRESOLVED_HOSTS = new Set(['blessingpowerguide.com', 'www.blessingpowerguide.com', 'blessingpowerguide.in']);
 
 /** Public shop origin for customer links (track, invoices). Never use a domain that does not resolve. */
 export function publicSiteOrigin(): string {

@@ -66,8 +66,8 @@ export function generateSingleThermalLabelHtml(o: ShippingLabelOrder, qrSvg: str
 
     <div class="top-row">
       <div>
-        <div class="brand-name">BLESSING POWER GUIDE</div>
-        <div class="brand-sub">ST COURIER EXPRESS DOORSTEP DISPATCH</div>
+        <div class="brand-name">VR MEN'S WEAR</div>
+        <div class="brand-sub">EXPRESS DOORSTEP DISPATCH · PREMIUM MEN'S APPAREL</div>
       </div>
       <div class="order-id-box">
         <div class="order-id-lbl">ORDER REF</div>
@@ -447,7 +447,7 @@ export async function generateShippingLabelsHtml(
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Shipping Labels (${orderList.length} Order${orderList.length === 1 ? '' : 's'}) — Blessing Power Guide</title>
+  <title>Shipping Labels (${orderList.length} Order${orderList.length === 1 ? '' : 's'}) — VR Men's Wear</title>
   <style>
     ${THERMAL_CSS}
   </style>

@@ -1,48 +1,32 @@
-export const MIN_BOOKS_PER_ORDER = Math.max(4, Number(process.env.NEXT_PUBLIC_MIN_BOOKS_PER_ORDER || 4));
-export const FREE_DELIVERY_AT_QTY = 5;
-export const STANDARD_DELIVERY_FEE = 150;
-export const COMBO_BOOK_EQUIVALENT = 5; // 1 combo pack represents 5 guide subjects
+export const MIN_BOOKS_PER_ORDER = 1;
+export const MIN_ITEMS_PER_ORDER = 1;
+export const FREE_DELIVERY_AT_AMOUNT = 999;
+export const FREE_DELIVERY_AT_QTY = 3;
+export const STANDARD_DELIVERY_FEE = 60;
+export const COMBO_BOOK_EQUIVALENT = 3; // 1 combo pack represents 3 apparel items
 
-/** Checks if an item belongs to the Combo Pack category or contains 5-in-1 guides */
+/** Checks if an item belongs to the Combo Pack category or contains 3-in-1 dresses/shirts */
 export function isComboItem(item: any): boolean {
   if (!item) return false;
-  const title = String(item.title || item.name || '').toLowerCase();
+  if (item.isCombo || item.is_combo) return true;
+  if (item.category === 'combos' || item.category === 'combo') return true;
+  if (item.category_id === 'cat-combos') return true;
 
-  // 1. Explicit multi-book bundle or combo indicators in title
+  const title = String(item.title || item.name || '').toLowerCase();
   const hasComboTitle =
     title.includes('combo') ||
-    title.includes('5 in 1') ||
-    title.includes('5-in-1') ||
-    title.includes('6 in 1') ||
-    title.includes('6-in-1') ||
-    title.includes('7 in 1') ||
-    title.includes('7-in-1') ||
-    title.includes('all in one') ||
-    title.includes('all-in-one') ||
-    title.includes('full set');
+    title.includes('pack of') ||
+    title.includes('3 in 1') ||
+    title.includes('3-in-1') ||
+    title.includes('set of') ||
+    title.includes('bundle');
 
   if (hasComboTitle) return true;
 
-  // 2. Multi-subject bundle payload check
-  const comboSubs = item.comboSubjects || item.combo_subjects;
-  if (Array.isArray(comboSubs) && comboSubs.length >= 2) {
+  const comboItems = item.comboItems || item.combo_items || item.comboSubjects || item.combo_subjects;
+  if (Array.isArray(comboItems) && comboItems.length >= 2) {
     return true;
   }
-
-  // 3. Single individual subject guides can NEVER be combos under any circumstances
-  const isIndividualGuide =
-    title.includes('guide') ||
-    title.includes('book') ||
-    /\b(tamil|english|maths|mathematics|science|social|physics|chemistry|biology|computer)\b/i.test(title) ||
-    (item.subject && !/combo|all/i.test(String(item.subject)));
-
-  if (isIndividualGuide && !hasComboTitle) {
-    return false;
-  }
-
-  // 4. Strict category check only when not an individual single guide
-  if (item.category_id === 'cat-combos') return true;
-  if (item.category === 'combo') return true;
 
   return false;
 }
@@ -53,77 +37,58 @@ export function cartHasCombo(items: any[] | null | undefined): boolean {
   return items.some((item) => Number(item.qty || 0) > 0 && isComboItem(item));
 }
 
-/**
- * Calculates effective book count for shipping / MOQ purposes.
- * Each combo pack counts as 5 guides since it bundles 5 full subjects (price of 5 guides).
- */
+/** Calculates total items count */
 export function effectiveBookCount(items: any[] | null | undefined): number {
   if (!Array.isArray(items)) return 0;
   return items.reduce((sum, item) => {
-    const qty = Math.max(0, Number(item.qty || 0));
-    if (qty <= 0) return sum;
+    const q = Math.max(0, Number(item.qty || 0));
+    if (q === 0) return sum;
     if (isComboItem(item)) {
-      return sum + qty * COMBO_BOOK_EQUIVALENT;
+      return sum + q * COMBO_BOOK_EQUIVALENT;
     }
-    return sum + qty;
+    return sum + q;
   }, 0);
 }
 
-/**
- * Calculates delivery fee:
- * - If cart has any combo pack -> ₹0 (FREE DELIVERY)
- * - If bookQty >= 5 -> ₹0 (FREE DELIVERY)
- * - If bookQty > 0 -> ₹150 flat delivery fee
- * - If bookQty <= 0 -> 0
- */
-export function deliveryFeeForQty(bookQty: number, hasCombo: boolean = false): number {
-  if (hasCombo) return 0;
-  const q = Math.max(0, Number(bookQty) || 0);
-  if (q <= 0) return 0;
-  return q >= FREE_DELIVERY_AT_QTY ? 0 : STANDARD_DELIVERY_FEE;
+export function booksUntilMinOrder(itemsOrCount: any): number {
+  const count = typeof itemsOrCount === 'number' ? itemsOrCount : effectiveBookCount(itemsOrCount);
+  return Math.max(0, MIN_ITEMS_PER_ORDER - count);
 }
 
-/** Calculates delivery fee directly from a cart items array */
-export function deliveryFeeForCart(items: any[] | null | undefined): number {
+export function minOrderCheckoutMessage(items: any[] | null | undefined): string | null {
+  const needed = booksUntilMinOrder(items);
+  if (needed <= 0) return null;
+  return `Please add at least ${needed} more item to checkout.`;
+}
+
+export function isMoqSatisfied(itemsOrCount: any): boolean {
+  if (Array.isArray(itemsOrCount)) {
+    if (itemsOrCount.length === 0) return false;
+    if (cartHasCombo(itemsOrCount)) return true;
+    return effectiveBookCount(itemsOrCount) >= MIN_ITEMS_PER_ORDER;
+  }
+  const num = Number(itemsOrCount || 0);
+  return num >= MIN_ITEMS_PER_ORDER;
+}
+
+export function deliveryFeeForQty(qty: number, hasCombo = false): number {
+  if (hasCombo) return 0;
+  if (qty >= FREE_DELIVERY_AT_QTY) return 0;
+  return STANDARD_DELIVERY_FEE;
+}
+
+export function deliveryFeeForCart(items: any[] | null | undefined, totalAmount?: number): number {
   if (!Array.isArray(items) || items.length === 0) return 0;
   if (cartHasCombo(items)) return 0;
-  const eff = effectiveBookCount(items);
-  return deliveryFeeForQty(eff, false);
+  if (typeof totalAmount === 'number' && totalAmount >= FREE_DELIVERY_AT_AMOUNT) return 0;
+  const count = effectiveBookCount(items);
+  return deliveryFeeForQty(count, false);
 }
 
-/** Checks if minimum order quantity requirement is met (1 combo pack satisfies MOQ) */
-export function isMoqSatisfied(itemsOrQty: any[] | number): boolean {
-  if (typeof itemsOrQty === 'number') {
-    return itemsOrQty >= MIN_BOOKS_PER_ORDER;
-  }
-  if (!Array.isArray(itemsOrQty) || itemsOrQty.length === 0) return false;
-  if (cartHasCombo(itemsOrQty)) return true;
-  return effectiveBookCount(itemsOrQty) >= MIN_BOOKS_PER_ORDER;
+export function booksUntilFreeDelivery(itemsOrCount: any): number {
+  if (cartHasCombo(Array.isArray(itemsOrCount) ? itemsOrCount : [])) return 0;
+  const count = typeof itemsOrCount === 'number' ? itemsOrCount : effectiveBookCount(itemsOrCount);
+  return Math.max(0, FREE_DELIVERY_AT_QTY - count);
 }
 
-/** Returns remaining books needed to reach Minimum Order Quantity */
-export function booksUntilMinOrder(itemsOrQty: any[] | number): number {
-  if (typeof itemsOrQty === 'number') {
-    return Math.max(0, MIN_BOOKS_PER_ORDER - Math.max(0, Number(itemsOrQty) || 0));
-  }
-  if (!Array.isArray(itemsOrQty) || itemsOrQty.length === 0) return MIN_BOOKS_PER_ORDER;
-  if (cartHasCombo(itemsOrQty)) return 0;
-  return Math.max(0, MIN_BOOKS_PER_ORDER - effectiveBookCount(itemsOrQty));
-}
 
-/** Human-readable checkout / cart alert message for MOQ */
-export function minOrderCheckoutMessage(itemsOrQty: any[] | number): string | null {
-  const need = booksUntilMinOrder(itemsOrQty);
-  if (need <= 0) return null;
-  return `Minimum ${MIN_BOOKS_PER_ORDER} books per order. Add ${need} more to checkout (or add 1 Combo Pack for instant Free Delivery).`;
-}
-
-/** Returns remaining books needed to reach Free Delivery tier (5 books) */
-export function booksUntilFreeDelivery(itemsOrQty: any[] | number): number {
-  if (typeof itemsOrQty === 'number') {
-    return Math.max(0, FREE_DELIVERY_AT_QTY - Math.max(0, Number(itemsOrQty) || 0));
-  }
-  if (!Array.isArray(itemsOrQty) || itemsOrQty.length === 0) return FREE_DELIVERY_AT_QTY;
-  if (cartHasCombo(itemsOrQty)) return 0;
-  return Math.max(0, FREE_DELIVERY_AT_QTY - effectiveBookCount(itemsOrQty));
-}

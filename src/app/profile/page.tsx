@@ -726,7 +726,7 @@ export default function ProfilePage() {
                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
                             <div className="text-xs space-y-0.5">
                               <h4 className="font-heading font-black text-slate-900 text-sm">
-                                {o.items?.[0]?.title || 'Blessing Power Guide Book Package'}
+                                {o.items?.[0]?.title || "VR Men's Wear Apparel Package"}
                               </h4>
                               <p className="text-slate-500 text-[11px]">
                                 Deliver to: <strong className="text-slate-800">{o.customerName}</strong> ({o.address}{o.city ? `, ${o.city}` : ''})

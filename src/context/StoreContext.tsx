@@ -7,47 +7,16 @@ import { IS_CHECKOUT_PAUSED, DEFAULT_CHECKOUT_PAUSE_MESSAGE } from '@/lib/checko
 import { authHeaders } from '@/lib/clientAuth';
 import { isMediumCompatible } from '@/lib/cartStock';
 import { resolveCartItemMedium } from '@/lib/productMedium';
-
-export interface Product {
-  id: string | number;
-  slug: string;
-  title: string;
-  subtitle: string;
-  cls: string;
-  category: 'guide' | 'combo' | 'question-bank';
-  subject: string;
-  price: number;
-  mrp: number;
-  discount: number;
-  rating: number;
-  reviews: number;
-  badge: string;
-  badgeColor: string;
-  image: string;
-  hoverImage?: string;
-  description: string;
-  features: string[];
-  inStock: boolean;
-  stock?: number;
-  stockTamil?: number | null;
-  stockEnglish?: number | null;
-  stock_tamil?: number | null;
-  stock_english?: number | null;
-  samplePdfUrl?: string | null;
-  comboSubjects?: string[];
-  isNew?: boolean;
-  isBestSeller?: boolean;
-  isTrending?: boolean;
-  isComingSoon?: boolean;
-  is_coming_soon?: boolean;
-  language?: string;
-  medium?: string;
-  status?: string;
-}
+import type { Product, ProductVariant } from '@/lib/products';
+export type { Product, ProductVariant };
 
 export interface CartItem extends Product {
   qty: number;
+  selectedSize?: string;
   selectedMedium?: string;
+  fabric?: string;
+  fit?: string;
+  isCombo?: boolean;
 }
 
 /** Payload shape pushed by `/api/stock/stream` on every `STOCK_CHANGED` event. */
@@ -111,7 +80,14 @@ interface StoreContextType {
   setIsAuthOpen: (open: boolean) => void;
   isProfileOpen: boolean;
   setIsProfileOpen: (open: boolean) => void;
-  addToCart: (product: Product, qty?: number, selectedMedium?: string) => void;
+  addToCart: (
+    product: Product,
+    qty?: number,
+    selectedMediumOrSize?: string,
+    selectedSizeAltOrPrice?: string | number,
+    variantPriceOrMrp?: number,
+    variantMrp?: number
+  ) => void;
   updateQty: (id: string | number, delta: number, selectedMedium?: string | null) => void;
   removeFromCart: (id: string | number, selectedMedium?: string | null) => void;
   clearCart: () => void;
@@ -1266,11 +1242,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return headers;
   };
 
-  const addToCart = (product: Product, qty: number = 1, selectedMedium?: string) => {
+  const addToCart = (
+    product: Product,
+    qty: number = 1,
+    selectedMediumOrSize?: string,
+    selectedSizeAltOrPrice?: string | number,
+    variantPriceOrMrp?: number,
+    variantMrp?: number
+  ) => {
     cartSyncAllowedRef.current = true;
-    // Prefer the freshest catalog snapshot (kept live by the 15s poll) over
-    // whatever stale product object the caller passed in.
-    const live = productsRef.current.find((p) => String(p.id) === String(product.id)) || product;
+    const live: any = productsRef.current.find((p) => String(p.id) === String(product.id)) || product;
     if (live.isComingSoon || live.status === 'coming_soon') {
       showToast(`⏳ "${live.title}" is coming soon and cannot be ordered yet.`);
       return;
@@ -1279,25 +1260,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       showToast(`❌ "${live.title}" is out of stock`);
       return;
     }
-    const finalMedium = resolveCartItemMedium(live.language, selectedMedium);
 
-    const isTamil = finalMedium && finalMedium.toLowerCase().includes('tamil');
-    const isEnglish = finalMedium && finalMedium.toLowerCase().includes('english');
-    const medStockTamil = live.stock_tamil !== undefined && live.stock_tamil !== null
-      ? Number(live.stock_tamil)
-      : (live.stockTamil !== undefined && live.stockTamil !== null ? Number(live.stockTamil) : null);
-    const medStockEnglish = live.stock_english !== undefined && live.stock_english !== null
-      ? Number(live.stock_english)
-      : (live.stockEnglish !== undefined && live.stockEnglish !== null ? Number(live.stockEnglish) : null);
+    let chosenSize: string;
+    let explicitPrice: number | undefined;
+    let explicitMrp: number | undefined;
 
-    const specificStock = isTamil && medStockTamil !== null
-      ? medStockTamil
-      : isEnglish && medStockEnglish !== null
-      ? medStockEnglish
-      : (typeof live.stock === 'number' ? Math.max(0, live.stock) : Infinity);
+    if (typeof selectedSizeAltOrPrice === 'number') {
+      chosenSize = selectedMediumOrSize || product.selectedSize || 'Free Size';
+      explicitPrice = selectedSizeAltOrPrice;
+      explicitMrp = variantPriceOrMrp;
+    } else {
+      const availableSizes: string[] = live.sizesAvailable || (live.variants && live.variants.length > 0 ? live.variants.map((v: any) => v.size) : ['S', 'M', 'L', 'XL', 'XXL']);
+      chosenSize = selectedSizeAltOrPrice || selectedMediumOrSize || product.selectedSize || (availableSizes.length > 0 ? availableSizes[0] : 'Free Size');
+      explicitPrice = variantPriceOrMrp;
+      explicitMrp = variantMrp;
+    }
+
+    const matchingVariant = (live.variants || []).find((v: any) => v.size === chosenSize);
+    const itemPrice = typeof explicitPrice === 'number' && explicitPrice > 0
+      ? explicitPrice
+      : (matchingVariant && typeof matchingVariant.price === 'number' ? matchingVariant.price : live.price);
+    const itemMrp = typeof explicitMrp === 'number' && explicitMrp > 0
+      ? explicitMrp
+      : (matchingVariant && typeof matchingVariant.mrp === 'number' ? matchingVariant.mrp : live.mrp);
+
+    const specificStock = matchingVariant && typeof matchingVariant.stock === 'number'
+      ? Math.max(0, matchingVariant.stock)
+      : (typeof live.stock === 'number' ? Math.max(0, live.stock) : 50);
 
     if (specificStock <= 0) {
-      showToast(`❌ "${live.title}" (${finalMedium || 'Selected medium'}) is sold out`);
+      showToast(`❌ "${live.title}" (Size: ${chosenSize}) is currently sold out`);
       return;
     }
     const stockLimit = specificStock;
@@ -1305,22 +1297,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     let toastMsg = '';
     setCart((prev) => {
       const existing = prev.find(
-        (item) => String(item.id) === String(product.id) && (item.selectedMedium === finalMedium || !finalMedium)
+        (item) => String(item.id) === String(product.id) && ((item.selectedSize || item.selectedMedium) === chosenSize)
       );
       const currentQty = existing ? existing.qty : 0;
       const desiredQty = currentQty + qty;
       const finalQty = Math.min(desiredQty, stockLimit);
 
       if (finalQty <= currentQty) {
-        toastMsg = `⚠️ Only ${stockLimit} of "${live.title}" available — already at max in your cart`;
+        toastMsg = `⚠️ Only ${stockLimit} left in Size ${chosenSize} of "${live.title}"`;
         return prev;
       }
 
-      const mediumLabel = finalMedium ? ` [${finalMedium}]` : '';
       toastMsg =
         finalQty < desiredQty
-          ? `⚠️ Only ${stockLimit} of "${live.title}" left — added up to the limit`
-          : `✓ Added "${live.title}"${mediumLabel} to cart!`;
+          ? `⚠️ Only ${stockLimit} in Size ${chosenSize} available — added to limit`
+          : `✓ Added "${live.title}" (Size: ${chosenSize}) to cart!`;
 
       const updated: CartItem[] = existing
         ? prev.map((item) =>
@@ -1328,16 +1319,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               ? {
                   ...item,
                   qty: finalQty,
-                  selectedMedium: finalMedium || item.selectedMedium,
-                  stock: live.stock,
+                  selectedSize: chosenSize,
+                  selectedMedium: chosenSize,
+                  price: itemPrice,
+                  mrp: itemMrp,
+                  stock: specificStock,
                   inStock: live.inStock,
-                  price: live.price,
-                  mrp: live.mrp,
-                  discount: live.discount,
                 }
               : item
           )
-        : [...prev, { ...live, qty: finalQty, selectedMedium: finalMedium }];
+        : [
+            ...prev,
+            {
+              ...live,
+              qty: finalQty,
+              price: itemPrice,
+              mrp: itemMrp,
+              selectedSize: chosenSize,
+              selectedMedium: chosenSize,
+              stock: specificStock,
+            },
+          ];
       try {
         localStorage.setItem('bpg_cart_next', JSON.stringify(updated));
       } catch {}

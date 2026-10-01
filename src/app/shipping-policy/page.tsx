@@ -6,21 +6,21 @@ import { Footer } from '@/components/layout/Footer';
 import { Truck, CheckCircle, Clock } from 'lucide-react';
 import { getShopPhoneDisplay } from '@/lib/shopContact';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://blessingpowerguide.in';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vrmenswear.in';
 
 export const metadata: Metadata = {
-  title: 'Shipping & Delivery Policy | Blessing Power Guide',
+  title: "Shipping & Delivery Policy | VR Men's Wear",
   description:
-    'ST Courier Express shipping timelines and delivery policies for Blessing Power Guide books across Tamil Nadu, Puducherry, and South India.',
+    "ST Courier Express shipping timelines and 7-day size exchange policies for VR Men's Wear across Tamil Nadu, South India, and PAN India.",
   alternates: {
     canonical: `${siteUrl}/shipping-policy`,
   },
   openGraph: {
-    title: 'Shipping & Delivery Policy | Blessing Power Guide',
+    title: "Shipping & Delivery Policy | VR Men's Wear",
     description:
-      'ST Courier Express shipping timelines and delivery policies for Blessing Power Guide books across Tamil Nadu and South India.',
+      "ST Courier Express shipping timelines and delivery policies for VR Men's Wear.",
     url: `${siteUrl}/shipping-policy`,
-    siteName: 'Blessing Power Guide',
+    siteName: "VR Men's Wear",
     type: 'website',
   },
 };
@@ -36,54 +36,46 @@ export default function ShippingPolicyPage() {
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
         <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-10 shadow-xs space-y-8">
           <div className="border-b border-slate-100 pb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-[#2874f0] rounded-full text-xs font-bold uppercase tracking-wider mb-3">
-              <Truck className="w-4 h-4" /> Shipping
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
+              <Truck className="w-4 h-4" /> Shipping & Delivery
             </div>
-            <h1 className="font-black text-2xl sm:text-3xl text-slate-900">Shipping & Delivery Policy</h1>
-            <p className="text-xs text-slate-500 mt-1">Blessing Pathway Education · Guide books</p>
+            <h1 className="font-black text-2xl sm:text-3xl text-slate-900">Shipping & Exchange Policy</h1>
+            <p className="text-xs text-slate-500 mt-1">VR Men's Wear · Premium Apparel & Combos</p>
           </div>
 
           <section className="space-y-3 text-xs sm:text-sm leading-relaxed text-slate-600">
             <h2 className="font-bold text-base text-slate-900 flex items-center gap-2">
-              <Truck className="w-4 h-4 text-[#2874f0]" /> Shipping partners & timelines
+              <Truck className="w-4 h-4 text-emerald-600" /> Shipping Partners & Timelines
             </h2>
             <p>
-              We ship all physical guide books via <strong>ST Courier Express</strong> across Tamil Nadu, Puducherry, Karnataka, Kerala, and Andhra Pradesh.
+              We ship all garment packages via <strong>ST Courier Express</strong> directly from our Chennai fulfillment hub.
             </p>
             <ul className="list-disc list-inside space-y-1 pl-2">
-              <li><strong>Tamil Nadu & Puducherry:</strong> 1 to 3 working days.</li>
-              <li><strong>South India (other states):</strong> 3 to 5 working days.</li>
-              <li><strong>Rest of India:</strong> 4 to 7 working days.</li>
+              <li><strong>Chennai & Tamil Nadu:</strong> 1 to 2 working days.</li>
+              <li><strong>Puducherry, Karnataka, Kerala, AP & Telangana:</strong> 2 to 4 working days.</li>
+              <li><strong>Rest of India:</strong> 3 to 6 working days.</li>
             </ul>
           </section>
 
           <section className="space-y-3 text-xs sm:text-sm leading-relaxed text-slate-600">
             <h2 className="font-bold text-base text-slate-900 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-[#2874f0]" /> No customer returns / refunds
+              <CheckCircle className="w-4 h-4 text-emerald-600" /> 7-Day Hassle-Free Size Exchange
             </h2>
             <p>
-              Blessing Power Guide sells <strong>educational guide books</strong>. All sales are <strong>final</strong>.
-              Customers <strong>cannot cancel</strong> orders from the website. We do <strong>not</strong> offer
-              customer-initiated returns, exchanges, or refunds once an order is placed and paid.
+              We want you to look your best. If the shirt, t-shirt, or trousers you received don't fit right, we offer a <strong>7-Day Size Exchange</strong>.
             </p>
             <p>
-              If the <strong>shop admin cancels</strong> an order (for example before dispatch), and you paid online
-              via Razorpay, a <strong>Razorpay refund is issued</strong> to your original payment method. That is the
-              only refund path — there is no general money-back or return-to-warehouse flow for customers.
-            </p>
-            <p>
-              If your parcel arrives damaged in transit or you received a clearly wrong title, call or message{' '}
-              <strong>{shopPhone}</strong> with your Order ID and photos — we will help case by case.
+              Simply notify our team on WhatsApp at <strong>{shopPhone}</strong> within 7 days of delivery with your Order ID and the replacement size needed. The item must be unused, unwashed, with all original tags attached.
             </p>
           </section>
 
           <section className="space-y-3 text-xs sm:text-sm leading-relaxed text-slate-600">
             <h2 className="font-bold text-base text-slate-900 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[#2874f0]" /> Support
+              <Clock className="w-4 h-4 text-emerald-600" /> Customer Support Desk
             </h2>
             <p>
-              Track your order anytime on My Orders or the Track page. For delivery questions, contact{' '}
-              <strong>{shopPhone}</strong> or <strong>blessingpowerguide@gmail.com</strong>.
+              Track your parcel anytime on My Orders or the Track page. For delivery inquiries or fabric sizing assistance, contact{' '}
+              <strong>{shopPhone}</strong> or <strong>support@vrmenswear.in</strong>.
             </p>
           </section>
         </div>

@@ -404,7 +404,7 @@ function HelpCenterContent() {
           const directAi: Message = {
             id: `ai_${Date.now()}`,
             sender_type: 'AI',
-            sender_name: 'Blessing AI Assistant',
+            sender_name: 'VR Stylist AI Assistant',
             text: data.reply,
             suggestions: data.suggestions || [],
             linkedOrderData: data.linkedOrderData,
@@ -564,10 +564,10 @@ function HelpCenterContent() {
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 Live Support Online
               </span>
-              <span className="text-xs text-slate-400 font-medium hidden sm:inline">· AI Assistant & Chennai Team (Mon–Sat 9AM–8PM)</span>
+              <span className="text-xs text-slate-400 font-medium hidden sm:inline">· AI Stylist & Chennai Team (Mon–Sat 10AM–9PM)</span>
             </div>
             <h1 className="text-lg sm:text-2xl font-black text-[#001B3A] tracking-tight mt-0.5">
-              Blessing Help Center & Live Chat
+              VR Men's Help Center & Live Chat
             </h1>
           </div>
         </div>
@@ -583,7 +583,7 @@ function HelpCenterContent() {
             <span className="sm:hidden">Call</span>
           </a>
           <a
-            href="https://wa.me/919486017820?text=Hello%20Blessing%20Power%20Guide%20Support,%20I%20need%20help%20with%20an%20order"
+            href="https://wa.me/919486017820?text=Hello%20VR%20Men%27s%20Collection%20Support,%20I%20need%20help%20with%20an%20order"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all shadow-2xs"
@@ -743,10 +743,10 @@ function HelpCenterContent() {
           <div className="hidden lg:block bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2 text-xs text-slate-600">
             <div className="flex items-center gap-2 font-bold text-slate-800">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Blessing Guarantee</span>
+              <span>VR Quality Guarantee</span>
             </div>
             <p className="text-[11px] leading-relaxed text-slate-500">
-              Free immediate replacement for misprinted or transit-damaged books. All shipments handled via priority ST Courier Express from Chennai.
+              7-day hassle-free size exchange on all garments. Priority doorstep delivery via ST Courier Express from Anna Nagar, Chennai.
             </p>
           </div>
         </div>
@@ -771,7 +771,7 @@ function HelpCenterContent() {
                   <h3 className="text-sm font-extrabold text-[#001B3A]">
                     {conversation?.status === 'ACTIVE' && conversation.assigned_admin_name
                       ? `Staff: ${conversation.assigned_admin_name}`
-                      : 'Blessing AI Support Assistant'}
+                      : 'VR Stylist AI Assistant'}
                   </h3>
                   <span
                     className={`text-[9.5px] font-extrabold px-2 py-0.5 rounded-full ${
@@ -879,12 +879,12 @@ function HelpCenterContent() {
                 <Sparkles className="w-4 h-4" />
                 <span>
                   {user?.name
-                    ? `Hello ${user.name.split(' ')[0]}! Welcome to Blessing Support`
-                    : 'Welcome to Blessing Customer Support!'}
+                    ? `Hello ${user.name.split(' ')[0]}! Welcome to VR Stylist Support`
+                    : 'Welcome to VR Men\'s Customer Support!'}
                 </span>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                I can check real-time ST Courier tracking, answer questions on Class 10 guides and prices, explain shipping rules, or connect you directly with our Chennai office team.
+                I can check real-time ST Courier tracking, assist with sizing charts and fabrics, recommend 3-in-1 combo packs, or connect you directly with our Chennai store staff.
               </p>
               {selectedOrderId && (
                 <div className="pt-1">

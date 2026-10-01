@@ -35,6 +35,8 @@ interface OrderItem {
   price?: number;
   subtotal?: number;
   medium?: string;
+  size?: string;
+  selectedSize?: string;
 }
 
 interface Order {
@@ -82,14 +84,14 @@ export function getWhatsAppShareUrl(order: Order): string {
   const cleanPhone = String(order.customerPhone || '').replace(/\D/g, '').slice(-10);
   const cleanName = order.customerName || 'Customer';
   const orderNumber = order.orderId || order.id;
-  const trackingUrl = `https://blessingpowerguide.in/track?orderId=${encodeURIComponent(orderNumber)}`;
+  const trackingUrl = `https://vrmenswear.in/track?orderId=${encodeURIComponent(orderNumber)}`;
 
   const items = Array.isArray(order.items) ? order.items : [];
   const itemsSummary = items.length > 0
-    ? items.map((i) => `• ${i.qty}x ${i.title}${i.medium ? ` (${i.medium})` : ''}${i.subtotal ? ` - ₹${i.subtotal}` : i.price ? ` - ₹${i.price * i.qty}` : ''}`).join('\n')
-    : '• Study Guide Books';
+    ? items.map((i) => `• ${i.qty}x ${i.title}${i.selectedSize || i.size ? ` (Size: ${i.selectedSize || i.size})` : ''}${i.subtotal ? ` - ₹${i.subtotal}` : i.price ? ` - ₹${i.price * i.qty}` : ''}`).join('\n')
+    : '• Menswear Garments';
 
-  const totalBooks = items.reduce((acc, cur) => acc + (cur.qty || 1), 0);
+  const totalItems = items.reduce((acc, cur) => acc + (cur.qty || 1), 0);
   const addressParts = [order.address, order.city, order.pincode ? `- ${order.pincode}` : '', order.state].filter(Boolean);
   const deliveryLine = addressParts.join(', ');
 
@@ -99,10 +101,10 @@ export function getWhatsAppShareUrl(order: Order): string {
   const lines = [
     `Dear ${cleanName},`,
     '',
-    'Thank you for your order with Blessing Power Guide.',
+    "Thank you for your order with VR Men's Wear.",
     '',
     `Order ID: #${orderNumber}`,
-    `Books: ${totalBooks}`,
+    `Items: ${totalItems}`,
     `Amount payable: ₹${order.totalAmount}`,
     `Payment: ${order.paymentMethod || 'Online'} (${order.paymentStatus || 'Paid'})`,
     `Status: ${currentFulfillment}`,
@@ -129,8 +131,8 @@ export function getWhatsAppShareUrl(order: Order): string {
   lines.push('');
   lines.push('Your order will be dispatched via ST Courier Express.');
   lines.push('');
-  lines.push('Blessing Power Guide');
-  lines.push('Tamil Nadu State Board guides (Classes 6–12)');
+  lines.push("VR Men's Wear");
+  lines.push("Premium Men's Apparel & Dynamic Sizing");
 
   const message = lines.join('\n');
   return cleanPhone
@@ -548,7 +550,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                             {fmt(order.totalAmount)}
                           </span>
                           <span className="text-[10px] text-slate-500 block truncate max-w-[180px]">
-                            {order.items?.map((i) => `${i.qty}x ${i.title}`).join(', ') || 'Guide Books'}
+                            {order.items?.map((i: any) => `${i.qty}x ${i.title}${i.selectedSize || i.size || i.medium ? ` [${i.selectedSize || i.size || i.medium}]` : ''}`).join(', ') || 'Apparel Items'}
                           </span>
                         </td>
 
@@ -783,9 +785,9 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-bold text-slate-900 block">{item.title}</span>
-                          {item.medium && (
-                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-blue-100 text-blue-900">
-                              {item.medium}
+                          {(item.size || (item as any).selectedSize || item.medium) && (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                              Size: {item.size || (item as any).selectedSize || item.medium}
                             </span>
                           )}
                         </div>

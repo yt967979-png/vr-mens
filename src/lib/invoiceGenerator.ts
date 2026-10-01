@@ -13,18 +13,18 @@ export function getFinancialYearString(date: Date = new Date()): string {
 }
 
 export function formatGstInvoiceNumber(orderId: string, createdAt?: string | Date, storedInvoiceNumber?: string | null): string {
-  if (storedInvoiceNumber && storedInvoiceNumber.startsWith('BPG/')) {
+  if (storedInvoiceNumber && (storedInvoiceNumber.startsWith('VR/') || storedInvoiceNumber.startsWith('BPG/'))) {
     return storedInvoiceNumber;
   }
   const d = createdAt ? new Date(createdAt) : new Date();
   const fy = getFinancialYearString(isNaN(d.getTime()) ? new Date() : d);
-  const cleanId = String(orderId || '').replace(/^BPG-?/i, '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-  return `BPG/${fy}/${cleanId || '00001'}`;
+  const cleanId = String(orderId || '').replace(/^(VR|BPG)-?/i, '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  return `VR/${fy}/${cleanId || '00001'}`;
 }
 
 /**
  * Atomically allocates the next sequential invoice number for the financial year.
- * Executes inside PostgreSQL transaction: BPG/26-27/00001, BPG/26-27/00002, etc.
+ * Executes inside PostgreSQL transaction: VR/26-27/00001, VR/26-27/00002, etc.
  */
 export async function generateNextGstInvoiceNumber(client: any, date: Date = new Date()): Promise<string> {
   const fy = getFinancialYearString(date);
@@ -38,9 +38,9 @@ export async function generateNextGstInvoiceNumber(client: any, date: Date = new
       [fy]
     );
     const seqNum = Number(res.rows[0]?.last_number || 1);
-    return `BPG/${fy}/${String(seqNum).padStart(5, '0')}`;
+    return `VR/${fy}/${String(seqNum).padStart(5, '0')}`;
   } catch {
-    return `BPG/${fy}/00001`;
+    return `VR/${fy}/00001`;
   }
 }
 
@@ -413,14 +413,14 @@ export async function generateTaxInvoiceHtml(orderData: InvoiceData): Promise<st
 
     <div class="header">
       <div>
-        <div class="brand-title">BLESSING POWER GUIDE</div>
+        <div class="brand-title">VR MEN'S WEAR</div>
         <div class="legal-sub">${esc(legalName)}</div>
         <div style="font-size:11px;color:#475569;margin-top:3px;">${esc(addressLine)}</div>
         <div style="font-size:11px;color:#475569;margin-top:2px;">
           ${gstinLine ? `${esc(gstinLine)} · ` : ''}State: Tamil Nadu (Code: 33)
         </div>
         <div style="font-size:11px;color:#2874f0;font-weight:700;margin-top:2px;">
-          ☎ +91 94860 17820 / +91 63829 63350 · blessingpowerguide@gmail.com
+          ☎ +91 94860 17820 · support@vrmenswear.in
         </div>
       </div>
 

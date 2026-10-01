@@ -146,7 +146,7 @@ export const ModalsBundle = () => {
                     <span className="text-xs text-slate-400 line-through">
                       ₹{quickViewProduct.mrp}
                     </span>
-                        {quickViewProduct.discount > 0 && (
+                        {(quickViewProduct.discount ?? 0) > 0 && (
                     <span className="text-xs font-bold text-emerald-600">
                       {quickViewProduct.discount}% OFF
                     </span>

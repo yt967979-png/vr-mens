@@ -1,5 +1,5 @@
 /**
- * Shop contact helpers — only customer→shop WhatsApp chat via wa.me (no Baileys / bots).
+ * Shop contact helpers for VR Men's Wear — WhatsApp customer support
  */
 
 export const DEFAULT_CUSTOMER_SUPPORT_PHONE = '+91 94860 17820';
@@ -9,7 +9,7 @@ function digitsOnly(raw: string) {
   return String(raw || '').replace(/\D/g, '');
 }
 
-/** E.164-ish digits for wa.me (91XXXXXXXXXX) — defaults to customer support 9486017820. */
+/** E.164-ish digits for wa.me */
 export function getShopWhatsAppDigits(): string {
   const raw =
     process.env.NEXT_PUBLIC_ADMIN_PHONE ||
@@ -34,26 +34,20 @@ export function getShopPhoneDisplay(): string {
   return `+${d}`;
 }
 
-/** Secondary display form e.g. +91 63829 63350 */
-export function getShopSecondaryPhoneDisplay(): string {
-  const raw =
-    process.env.NEXT_PUBLIC_SECONDARY_PHONE ||
-    process.env.SECONDARY_PHONE ||
-    '6382963350';
-  const d = digitsOnly(raw);
-  const num = d.slice(-10);
-  return `+91 ${num.slice(0, 5)} ${num.slice(5)}`;
-}
-
 export function shopWhatsAppChatUrl(prefill?: string): string {
   const phone = getShopWhatsAppDigits();
   if (!prefill) return `https://wa.me/${phone}`;
   return `https://wa.me/${phone}?text=${encodeURIComponent(prefill)}`;
 }
 
-/** Pre-filled WhatsApp URL for instant sample chapter PDF requests */
-export function samplePdfWhatsAppUrl(bookTitle: string, standard?: string): string {
-  const stdText = standard ? ` (${standard} Standard)` : '';
-  const text = `Hi Blessing Power Guide, please send me the sample chapter PDF for "${bookTitle}"${stdText}. Thank you!`;
+/** Pre-filled WhatsApp URL for instant size & fabric inquiries */
+export function sizeInquiryWhatsAppUrl(productTitle: string, size?: string): string {
+  const sizeText = size ? ` for Size ${size}` : '';
+  const text = `Hi VR Men's Wear, I have a query about "${productTitle}"${sizeText}. Could you assist with size and fabric details? Thanks!`;
   return shopWhatsAppChatUrl(text);
+}
+
+// Backward compatibility alias
+export function samplePdfWhatsAppUrl(productTitle: string, standard?: string): string {
+  return sizeInquiryWhatsAppUrl(productTitle, standard);
 }

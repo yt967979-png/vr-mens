@@ -839,7 +839,7 @@ export const LiveSupportSection: React.FC<LiveSupportSectionProps> = ({
                       ☎ +91 {contextCard?.order?.customerPhone || selectedConv.customer_phone}
                     </span>
                     <a
-                      href={`https://wa.me/91${String(contextCard?.order?.customerPhone || selectedConv.customer_phone || '').replace(/\D/g, '').slice(-10)}?text=Hello%20${encodeURIComponent(contextCard?.order?.customerName || 'Customer')},%20regarding%20your%20Blessing%20Power%20Guide%20order`}
+                      href={`https://wa.me/91${String(contextCard?.order?.customerPhone || selectedConv.customer_phone || '').replace(/\D/g, '').slice(-10)}?text=Hello%20${encodeURIComponent(contextCard?.order?.customerName || 'Customer')},%20regarding%20your%20VR%20Men%27s%20Collection%20order`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px]"

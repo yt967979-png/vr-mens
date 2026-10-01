@@ -759,7 +759,7 @@ function OrdersContent() {
 
                   <a
                     href={shopWhatsAppChatUrl(
-                      `Hi Blessing Power Guide! I need help with my order #${searchedOrderData.orderId || ''}.`
+                      `Hi VR Men's Wear! I need help with my order #${searchedOrderData.orderId || ''}.`
                     )}
                     target="_blank"
                     rel="noopener noreferrer"

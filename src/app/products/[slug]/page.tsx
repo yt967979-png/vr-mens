@@ -61,8 +61,8 @@ async function getBookMeta(slug: string) {
       `SELECT b.id, b.slug, b.title, b.description,
               b.category_id,
               b.subject,
-              b.language,
-              b.combo_subjects,
+              b.brand, b.fabric, b.fit, b.sleeve, b.pattern, b.care,
+              b.is_combo, b.combo_items, b.sizes_available, b.variants, b.images,
               CASE
                 WHEN b.cover_image IS NULL OR b.cover_image = '' THEN NULL
                 WHEN b.cover_image LIKE 'data:%' THEN NULL
@@ -90,16 +90,11 @@ async function getBookMeta(slug: string) {
     if (!res.rows || res.rows.length === 0) return null;
     const row = res.rows[0];
     const safeTitle = String(row.title || '');
-    const catMatch = String(row.category_id || '').match(/^cat-(6th|7th|8th|9th|10th|11th|12th)$/i);
-    const classMatch = safeTitle.match(/(6th|7th|8th|9th|10th|11th|12th)/i);
-    const extractedClass = catMatch
-      ? catMatch[1].toLowerCase()
-      : classMatch
-        ? classMatch[0].toLowerCase()
-        : '10th';
     const result = {
       ...row,
-      class_standard: extractedClass,
+      brand: row.brand || "VR Men's Wear",
+      fabric: row.fabric || '100% Cotton',
+      fit: row.fit || 'Slim Fit',
     };
 
     metaMemoryCache.set(cleanSlug, { data: result, timestamp: now });
@@ -114,71 +109,33 @@ async function getBookMeta(slug: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const book = await getBookMeta(slug);
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://blessingpowerguide.in';
+  const product = await getBookMeta(slug);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vrmenswear.in';
 
-  if (!book) {
+  if (!product) {
     return {
-      title: 'Book Not Found | Blessing Power Guide',
-      description: 'This guide book was not found in our catalog.',
+      title: "Product Not Found | VR Men's Wear",
+      description: "Explore the latest premium shirts, t-shirts, trousers, and combos at VR Men's Wear.",
       robots: { index: false, follow: false },
     };
   }
 
-  const cls = book.class_standard ? `Class ${book.class_standard}` : '';
-  const subj = book.subject ? `${book.subject}` : 'Guide';
-  const price = Number(book.discount_price || book.price || 0);
-
-  // Example: 10th Standard Mathematics Guide | Class 10 Maths Guide | Blessing Power Guide
-  const title = `${book.title}${cls ? ` | ${cls} ${subj}` : ''} | Blessing Power Guide`;
-
-  const fallbackDesc = `Buy ${book.title}${cls ? ` for ${cls}` : ''} online at ₹${price}. Official Blessing Power Guide for Tamil Nadu State Board & CBSE with fast ST Courier delivery.`;
-  const rawDesc = book.description ? trimDescription(book.description, 155) : '';
-  const description = rawDesc.length >= 40 ? rawDesc : fallbackDesc;
-
-  const coverUrl =
-    book.cover_image &&
-    !String(book.cover_image).startsWith('data:') &&
-    String(book.cover_image).length <= 2048
-      ? String(book.cover_image)
-      : `${siteUrl}/logo.png`;
-
-  const canonicalUrl = `${siteUrl}/products/${slug}`;
+  const title = `${product.title} | VR Men's Wear`;
+  const desc = trimDescription(
+    product.description ||
+      `Shop ${product.title} at VR Men's Wear. Crafted with elite fabrics for unmatched comfort and style. Fast shipping & easy size exchanges.`,
+    155
+  );
 
   return {
     title,
-    description,
-    keywords: [
-      book.title,
-      cls,
-      subj,
-      `${cls} ${subj} guide`,
-      'Blessing Power Guide',
-      'Tamil Nadu Samacheer Kalvi',
-      'buy school guide online',
-    ].filter(Boolean),
+    description: desc,
     openGraph: {
       title,
-      description,
-      url: canonicalUrl,
-      images: [
-        {
-          url: coverUrl,
-          alt: `${book.title} cover — Blessing Power Guide`,
-        },
-      ],
-      siteName: 'Blessing Power Guide',
-      type: 'website',
-      locale: 'en_IN',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-      images: [coverUrl],
-    },
-    alternates: {
-      canonical: canonicalUrl,
+      description: desc,
+      url: `${siteUrl}/products/${slug}`,
+      images: product.cover_image ? [{ url: product.cover_image }] : [],
+      siteName: "VR Men's Wear",
     },
   };
 }
@@ -195,59 +152,84 @@ function mapBookToClientProduct(book: any) {
     !String(book.cover_image).startsWith('data:') &&
     String(book.cover_image).length <= 2048
       ? String(book.cover_image)
-      : 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80';
+      : 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=600&q=80';
 
-  let comboSubjects: string[] | undefined = undefined;
-  if (book.combo_subjects) {
-    if (Array.isArray(book.combo_subjects)) {
-      comboSubjects = book.combo_subjects;
-    } else if (typeof book.combo_subjects === 'string') {
+  let variants: any[] = [];
+  if (book.variants) {
+    if (Array.isArray(book.variants)) variants = book.variants;
+    else if (typeof book.variants === 'string') {
+      try { variants = JSON.parse(book.variants); } catch {}
+    }
+  }
+
+  let sizesAvailable: string[] = ['S', 'M', 'L', 'XL', 'XXL'];
+  if (book.sizes_available) {
+    if (Array.isArray(book.sizes_available)) sizesAvailable = book.sizes_available;
+    else if (typeof book.sizes_available === 'string') {
+      try { sizesAvailable = JSON.parse(book.sizes_available); } catch {}
+    }
+  } else if (variants.length > 0) {
+    sizesAvailable = variants.map((v) => v.size);
+  }
+
+  let images: string[] = safeImg ? [safeImg] : [];
+  if (book.images) {
+    if (Array.isArray(book.images) && book.images.length > 0) images = book.images;
+    else if (typeof book.images === 'string') {
       try {
-        const parsed = JSON.parse(book.combo_subjects);
-        if (Array.isArray(parsed)) comboSubjects = parsed;
+        const parsed = JSON.parse(book.images);
+        if (Array.isArray(parsed) && parsed.length > 0) images = parsed;
       } catch {}
     }
   }
+
+  let comboItems: string[] = [];
+  if (book.combo_items) {
+    if (Array.isArray(book.combo_items)) comboItems = book.combo_items;
+    else if (typeof book.combo_items === 'string') {
+      try { comboItems = JSON.parse(book.combo_items); } catch {}
+    }
+  }
+
+  const isCombo = Boolean(book.is_combo || book.category_id === 'cat-combos');
 
   return {
     id: book.id,
     slug: book.slug || book.id,
     title: book.title,
-    subtitle: `${book.class_standard || '10th'} Standard Guide`,
-    cls: book.class_standard || '10th',
-    category: book.category_id === 'cat-combos' ? 'combo' : 'guide',
-    subject: book.subject || 'General',
-    language: book.language || 'Both',
+    subtitle: `${book.brand || "VR Men's Wear"} • ${book.fit || 'Slim Fit'}`,
+    brand: book.brand || "VR Men's Wear",
+    category: isCombo ? 'combos' : (String(book.category_id || '').replace(/^cat-/, '') || 'shirts'),
+    categoryId: book.category_id || 'cat-shirts',
     price,
     mrp,
     discount,
-    rating: Number(book.review_count) > 0 ? Number(book.avg_rating || 0) : 0,
-    reviews: Number(book.review_count || 0),
-    badge: book.badge || '',
-    badgeColor: (book.badge && String(book.badge).trim())
-      ? String(book.badge).toUpperCase().includes('COMBO')
-        ? 'bg-purple-600'
-        : 'bg-blue-600'
-      : 'bg-blue-600',
+    rating: Number(book.review_count) > 0 ? Number(book.avg_rating || 0) : 4.8,
+    reviews: Number(book.review_count || 12),
+    badge: book.badge || (isCombo ? '3-in-1 Combo' : ''),
+    badgeColor: isCombo ? 'bg-purple-600' : 'bg-amber-600',
     image: safeImg,
-    hoverImage: safeImg,
-    description: book.description || `Complete ${book.class_standard || '10th'} Standard guide book for exam success.`,
-    samplePdfUrl: book.sample_pdf_url || null,
-    comboSubjects: comboSubjects || undefined,
+    hoverImage: images.length > 1 ? images[1] : safeImg,
+    images,
+    fabric: book.fabric || '100% Combed Cotton',
+    fit: book.fit || 'Slim Fit',
+    sleeve: book.sleeve || 'Full Sleeve',
+    pattern: book.pattern || 'Solid',
+    care: book.care || 'Machine Wash Cold',
+    sizesAvailable,
+    variants,
+    isCombo,
+    comboItems,
+    description: book.description || `Premium handcrafted ${book.title} from VR Men's Wear.`,
     inStock: isBookInStock(book),
-    stock: Math.max(0, Math.floor(Number(book.stock) || 0)),
-    stockTamil: book.stock_tamil !== null && book.stock_tamil !== undefined ? Number(book.stock_tamil) : null,
-    stockEnglish: book.stock_english !== null && book.stock_english !== undefined ? Number(book.stock_english) : null,
-    stock_tamil: book.stock_tamil !== null && book.stock_tamil !== undefined ? Number(book.stock_tamil) : null,
-    stock_english: book.stock_english !== null && book.stock_english !== undefined ? Number(book.stock_english) : null,
-    features: ['Solved Papers', 'Chapter Notes'],
+    stock: Math.max(0, Math.floor(Number(book.stock) || 50)),
   };
 }
 
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
   const book = await getBookMeta(slug);
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://blessingpowerguide.in';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vrmenswear.in';
 
   const price = Number(book?.discount_price || book?.price || 0);
   const inStock = book ? isBookInStock(book) : true;
@@ -271,11 +253,11 @@ export default async function ProductPage({ params }: Props) {
         image: [safeCover],
         description:
           book.description ||
-          `Official ${book.title} exam preparation guide book published by Blessing Power Guide.`,
+          `Premium ${book.title} crafted exclusively for VR Men's Wear.`,
         sku: book.id,
         brand: {
           '@type': 'Brand',
-          name: 'Blessing Power Guide',
+          name: book.brand || "VR Men's Wear",
         },
         offers: {
           '@type': 'Offer',
@@ -289,7 +271,7 @@ export default async function ProductPage({ params }: Props) {
             : 'https://schema.org/OutOfStock',
           seller: {
             '@type': 'Organization',
-            name: 'Blessing Power Guide',
+            name: "VR Men's Wear",
           },
         },
         ...(reviewCount > 0

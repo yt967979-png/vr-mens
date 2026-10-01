@@ -5,13 +5,13 @@ export function getShopGstin(): string {
 }
 
 export function getShopLegalName(): string {
-  return String(process.env.SHOP_LEGAL_NAME || 'Blessing Pathway Education').trim();
+  return String(process.env.SHOP_LEGAL_NAME || "VR Men's Wear").trim();
 }
 
 export function getShopInvoiceAddress(): string {
   return String(
     process.env.SHOP_INVOICE_ADDRESS ||
-      'Chennai, Tamil Nadu, India'
+      "VR Men's Wear, 2nd Avenue, Anna Nagar, Chennai, Tamil Nadu - 600040"
   ).trim();
 }
 

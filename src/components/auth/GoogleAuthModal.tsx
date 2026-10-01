@@ -355,7 +355,7 @@ export function GoogleAuthModal({
           <div className="flex items-center gap-2 mb-2">
             <BrandLogo size={32} className="w-8 h-8 shadow-md" />
             <span className="font-heading font-black text-xs text-amber-300 tracking-wider uppercase">
-              Blessing Power Guide
+              VR Men's Wear
             </span>
           </div>
           <h3 className="font-heading font-black text-xl text-white">

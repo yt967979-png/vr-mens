@@ -1095,8 +1095,8 @@ async function runSchemaInit(client: any) {
 
         CREATE TABLE IF NOT EXISTS settings (
           id VARCHAR(50) PRIMARY KEY DEFAULT 'main',
-          site_name VARCHAR(255) DEFAULT 'BLESSING POWER GUIDE',
-          support_email VARCHAR(255) DEFAULT 'blessingpowerguide@gmail.com',
+          site_name VARCHAR(255) DEFAULT 'VR MEN''S COLLECTION',
+          support_email VARCHAR(255) DEFAULT 'support@vrmenswear.in',
           support_phone VARCHAR(255) DEFAULT '+91 94860 17820',
           razorpay_key VARCHAR(255),
           shipping_charge NUMERIC DEFAULT 0,
@@ -1655,14 +1655,12 @@ export async function ensureAdminUser(client: any) {
 /** Idempotent seed for 6th–12th + combo categories — safe to call before any book insert. */
 export async function ensureDefaultCategories(client: any) {
   const categories = [
-    { id: 'cat-combos', name: 'Combo Packs', slug: 'combos' },
-    { id: 'cat-6th', name: '6th Standard Guides', slug: '6th' },
-    { id: 'cat-7th', name: '7th Standard Guides', slug: '7th' },
-    { id: 'cat-8th', name: '8th Standard Guides', slug: '8th' },
-    { id: 'cat-9th', name: '9th Standard Guides', slug: '9th' },
-    { id: 'cat-10th', name: '10th Standard Guides', slug: '10th' },
-    { id: 'cat-11th', name: '11th Standard Guides', slug: '11th' },
-    { id: 'cat-12th', name: '12th Standard Guides', slug: '12th' },
+    { id: 'cat-combos', name: 'Value Combo Packs (3-in-1)', slug: 'combos' },
+    { id: 'cat-shirts', name: 'Formal & Casual Shirts', slug: 'shirts' },
+    { id: 'cat-tshirts', name: 'T-Shirts & Polos', slug: 'tshirts' },
+    { id: 'cat-trousers', name: 'Trousers & Chinos', slug: 'trousers' },
+    { id: 'cat-jeans', name: 'Denim Jeans', slug: 'jeans' },
+    { id: 'cat-kurtas', name: 'Kurtas & Ethnic Wear', slug: 'kurtas' },
   ];
   const run =
     typeof client === 'function'
@@ -1675,7 +1673,7 @@ export async function ensureDefaultCategories(client: any) {
     await run(
       `INSERT INTO categories (id, name, slug, status)
        VALUES ($1, $2, $3, 'active')
-       ON CONFLICT (id) DO NOTHING`,
+       ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, status = 'active'`,
       [cat.id, cat.name, cat.slug]
     );
   }

@@ -2,13 +2,13 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Blessing Power Guide',
-    short_name: 'Blessing',
-    description: 'Premium educational guide books for classes 6–12 (TN / CBSE).',
+    name: "VR Men's Wear",
+    short_name: 'VR Menswear',
+    description: "Premium men's clothing store — shirts, chinos, kurtas & 3-in-1 combo packs.",
     start_url: '/',
     display: 'standalone',
-    background_color: '#001B3A',
-    theme_color: '#001B3A',
+    background_color: '#0B0F19',
+    theme_color: '#0B0F19',
     icons: [
       {
         src: '/logo.png',

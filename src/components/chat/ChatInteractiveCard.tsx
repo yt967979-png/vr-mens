@@ -259,7 +259,7 @@ export const ChatInteractiveCard: React.FC<ChatInteractiveCardProps> = ({
           </a>
 
           <a
-            href="https://wa.me/919486017820?text=Hello%20Blessing%20Power%20Guide,%20I%20need%20help"
+            href="https://wa.me/919486017820?text=Hello%20VR%20Men%27s%20Collection,%20I%20need%20help"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors"

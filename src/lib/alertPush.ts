@@ -26,7 +26,7 @@ export async function sendPushAlert(opts: {
   alertCooldowns.set(opts.key, now);
 
   const emoji = opts.severity === 'critical' ? '🚨' : opts.severity === 'warning' ? '⚠️' : 'ℹ️';
-  const text = `${emoji} *[Blessing Power Guide - ${opts.severity?.toUpperCase() || 'ALERT'}]* ${opts.title}\n\n${opts.message}\n${
+  const text = `${emoji} *[VR Men's Wear - ${opts.severity?.toUpperCase() || 'ALERT'}]* ${opts.title}\n\n${opts.message}\n${
     opts.details ? `\`\`\`json\n${JSON.stringify(opts.details, null, 2)}\n\`\`\`` : ''
   }`;
 

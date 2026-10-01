@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import PaymentFailedPage from './PaymentFailedClient';
 
 export const metadata: Metadata = {
-  title: 'Payment Incomplete | Blessing Power Guide',
+  title: "Payment Incomplete | VR Men's Wear",
   robots: {
     index: false,
     follow: false,

@@ -6,7 +6,7 @@ export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = (
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://blessingpowerguide.in'
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://vrmenswear.in'
   ).replace(/\/+$/, '');
 
   let productUrls: MetadataRoute.Sitemap = [];
@@ -33,16 +33,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   } catch {}
 
-  const classCategoryUrls: MetadataRoute.Sitemap = [
-    '6th',
-    '7th',
-    '8th',
-    '9th',
-    '10th',
-    '11th',
-    '12th',
-  ].map((cls) => ({
-    url: `${baseUrl}/search?class=${encodeURIComponent(cls)}`,
+  const apparelCategoryUrls: MetadataRoute.Sitemap = [
+    'shirts',
+    'tshirts',
+    'trousers',
+    'jeans',
+    'kurtas',
+    'combos',
+  ].map((cat) => ({
+    url: `${baseUrl}/search?category=${encodeURIComponent(cat)}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.7,
@@ -79,7 +78,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.3,
     },
-    ...classCategoryUrls,
+    ...apparelCategoryUrls,
     ...productUrls,
   ];
 }

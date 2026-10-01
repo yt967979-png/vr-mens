@@ -47,7 +47,7 @@ export async function GET(
       try {
         const refUrl = new URL(referer);
         const isLocal = refUrl.hostname === 'localhost' || refUrl.hostname === '127.0.0.1';
-        const isOwnDomain = refUrl.hostname.includes('blessingpowerguide.in');
+        const isOwnDomain = refUrl.hostname.includes('vrmenswear.in') || refUrl.hostname.includes('blessingpowerguide.in');
         if (!isLocal && !isOwnDomain) {
           return new NextResponse('Hotlinking forbidden', { status: 403 });
         }

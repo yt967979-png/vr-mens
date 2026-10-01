@@ -583,6 +583,29 @@ async function migrateDatabase(connStr, dbName) {
 
       ALTER TABLE books ADD COLUMN IF NOT EXISTS sample_pdf_url TEXT;
       ALTER TABLE books ADD COLUMN IF NOT EXISTS discount_price NUMERIC;
+      
+      -- VR Men's Collection Apparel Columns
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS brand VARCHAR(255) DEFAULT 'VR Men''s Collection';
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS fabric VARCHAR(100) DEFAULT '100% Cotton';
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS fit VARCHAR(100) DEFAULT 'Slim Fit';
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS sleeve VARCHAR(100) DEFAULT 'Full Sleeve';
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS pattern VARCHAR(100) DEFAULT 'Solid';
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS care VARCHAR(255) DEFAULT 'Machine Wash';
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS is_combo BOOLEAN DEFAULT FALSE;
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS combo_items JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS sizes_available JSONB DEFAULT '["S","M","L","XL","XXL"]'::jsonb;
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS variants JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE books ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
+
+      ALTER TABLE cart_items ADD COLUMN IF NOT EXISTS selected_size VARCHAR(50);
+      ALTER TABLE cart_items ADD COLUMN IF NOT EXISTS selected_color VARCHAR(50);
+      ALTER TABLE cart_items ADD COLUMN IF NOT EXISTS variant_id VARCHAR(255);
+
+      ALTER TABLE order_items ADD COLUMN IF NOT EXISTS selected_size VARCHAR(50);
+      ALTER TABLE order_items ADD COLUMN IF NOT EXISTS selected_color VARCHAR(50);
+      ALTER TABLE order_items ADD COLUMN IF NOT EXISTS variant_id VARCHAR(255);
+      ALTER TABLE order_items ADD COLUMN IF NOT EXISTS product_image TEXT;
+
       ALTER TABLE addresses ADD COLUMN IF NOT EXISTS alternate_phone VARCHAR(20);
       ALTER TABLE reviews ADD COLUMN IF NOT EXISTS order_id VARCHAR(255);
       ALTER TABLE reviews ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
@@ -691,37 +714,35 @@ function isProductionSeedRuntime() {
 const DEFAULT_FAQS = [
   {
     id: 'faq-1',
-    question: 'Which syllabus do Blessing Power Guides follow?',
-    answer: 'Our guides follow the latest Tamil Nadu State Board (Samacheer Kalvi) syllabus, CBSE board curriculum, and Matriculation standards updated for the 2026 academic year.',
+    question: 'How do I choose my correct size at VR Men\'s Collection?',
+    answer: 'We provide an exact Measurement Chart (Inches & CM) on every product page for Chest, Shoulder, Length, and Waist. For a relaxed fit, we recommend ordering one size up.',
     display_order: 1,
   },
   {
     id: 'faq-2',
-    question: 'How long does delivery take across Tamil Nadu and India?',
-    answer: 'Orders are dispatched within 24 hours. Delivery takes 2-3 working days within Tamil Nadu and 3-5 days for rest of India.',
+    question: 'What is your size exchange and return policy?',
+    answer: 'We offer a hassle-free 7-day size exchange policy. If your shirt or trouser does not fit perfectly, contact our WhatsApp support and we will arrange a replacement size free of charge.',
     display_order: 2,
   },
   {
     id: 'faq-3',
-    question: 'Do you offer Cash on Delivery (COD)?',
-    answer: 'We accept secure online payments via Razorpay (UPI, Google Pay, PhonePe, Cards, Net Banking). Cash on Delivery is not available.',
+    question: 'What is included in the 3-in-1 Combo Packs?',
+    answer: 'Our 3-in-1 Combo packs bundle 3 premium matching garments (e.g. 3 solid formal shirts or 3 cotton t-shirts) at up to 40% discount compared to individual purchases. You can pick your desired size for the full combo pack.',
     display_order: 3,
   },
   {
     id: 'faq-4',
-    question: 'What is included in the 5-Subject Combo Pack?',
-    answer: 'The 10th Standard Combo Pack includes 5 complete books: Mathematics, Science, Social Science, English, and Tamil with model question papers and step-by-step solutions.',
+    question: 'How long does delivery take across India?',
+    answer: 'All orders are dispatched within 24 hours from our fulfillment hub. Express courier delivery takes 2–3 business days across South India and 3–5 days across the rest of India.',
     display_order: 4,
   },
   {
     id: 'faq-5',
-    question: 'Can I preview sample chapters before buying?',
-    answer: 'Yes, you can click on the Free Sample PDF button to download free sample chapters of any standard and subject.',
+    question: 'What payment methods do you accept?',
+    answer: 'We accept all major secure payment methods via Razorpay: UPI (Google Pay, PhonePe, Paytm), Credit/Debit Cards, and Net Banking.',
     display_order: 5,
   },
 ];
-
-
 
 async function seedCouponsAndFaqs(connStr, dbName) {
   const client = new Client({
@@ -732,7 +753,6 @@ async function seedCouponsAndFaqs(connStr, dbName) {
   try {
     await client.connect();
 
-    // Coupons are product-disabled — do not seed offer codes.
     console.log(`ℹ️  [${dbName}] Coupon seed skipped (system disabled)`);
 
     for (const faq of DEFAULT_FAQS) {
@@ -743,7 +763,7 @@ async function seedCouponsAndFaqs(connStr, dbName) {
         [faq.id, faq.question, faq.answer, faq.display_order]
       );
     }
-    console.log(`✅ [${dbName}] FAQs seeded`);
+    console.log(`✅ [${dbName}] Apparel FAQs seeded`);
 
     await client.end();
   } catch (err) {
@@ -759,24 +779,23 @@ async function seedCategories(connStr, dbName) {
     connectionTimeoutMillis: Number(process.env.DB_CONNECT_TIMEOUT_MS || 15000),
   });
   const categories = [
-    ['cat-combos', 'Combo Packs', 'combos'],
-    ['cat-6th', '6th Standard Guides', '6th'],
-    ['cat-7th', '7th Standard Guides', '7th'],
-    ['cat-8th', '8th Standard Guides', '8th'],
-    ['cat-9th', '9th Standard Guides', '9th'],
-    ['cat-10th', '10th Standard Guides', '10th'],
-    ['cat-11th', '11th Standard Guides', '11th'],
-    ['cat-12th', '12th Standard Guides', '12th'],
+    ['cat-combos', 'Value Combo Packs (3-in-1)', 'combos'],
+    ['cat-shirts', 'Formal & Casual Shirts', 'shirts'],
+    ['cat-tshirts', 'T-Shirts & Polos', 'tshirts'],
+    ['cat-trousers', 'Trousers & Chinos', 'trousers'],
+    ['cat-jeans', 'Denim Jeans', 'jeans'],
+    ['cat-kurtas', 'Kurtas & Ethnic Wear', 'kurtas'],
   ];
   try {
     await client.connect();
     for (const [id, name, slug] of categories) {
       await client.query(
-        `INSERT INTO categories (id, name, slug, status) VALUES ($1, $2, $3, 'active') ON CONFLICT (id) DO NOTHING`,
+        `INSERT INTO categories (id, name, slug, status) VALUES ($1, $2, $3, 'active')
+         ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, status = 'active'`,
         [id, name, slug]
       );
     }
-    console.log(`✅ [${dbName}] Categories seeded`);
+    console.log(`✅ [${dbName}] Apparel Categories seeded`);
     await client.end();
   } catch (err) {
     console.error(`❌ Categories seed error [${dbName}]:`, err.message);

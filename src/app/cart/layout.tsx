@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Shopping Cart | Blessing Power Guide',
-  description: 'View your selected guide books and proceed to secure checkout.',
+  title: "Shopping Cart | VR Men's Wear",
+  description: 'View your selected menswear items and proceed to secure checkout.',
   robots: {
     index: false,
     follow: false,

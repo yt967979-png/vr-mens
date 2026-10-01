@@ -490,7 +490,7 @@ export default function OpsPage() {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="font-heading font-black text-xl sm:text-2xl text-white">
-                    Blessing Power Guide — Operations Console
+                    VR Men's Wear — Operations Console
                   </h1>
                   <span
                     className={`px-3 py-0.5 rounded-full text-[11px] font-black tracking-wider uppercase inline-flex items-center gap-1.5 ${

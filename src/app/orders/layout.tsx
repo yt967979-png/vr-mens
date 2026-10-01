@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'My Orders | Blessing Power Guide',
+  title: "My Orders | VR Men's Wear",
   description: 'View order history, receipts, and live courier tracking.',
   robots: {
     index: false,

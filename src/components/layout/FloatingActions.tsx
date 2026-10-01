@@ -21,7 +21,7 @@ export const FloatingActions = () => {
       } right-3.5 md:bottom-6 md:right-6 z-40 flex flex-col items-end gap-2 pointer-events-auto select-none`}
     >
       <a
-        href={shopWhatsAppChatUrl('Hello Blessing Power Guide Support, I need help with ordering books')}
+        href={shopWhatsAppChatUrl("Hello VR Men's Wear Support, I need help with ordering garments")}
         target="_blank"
         rel="noreferrer"
         className="group relative flex items-center gap-2 px-3 py-2.5 md:p-3.5 rounded-full bg-[#25D366] text-white shadow-[0_6px_20px_rgba(37,211,102,0.4)] hover:bg-[#20bd5a] hover:scale-105 active:scale-95 transition-all duration-200"

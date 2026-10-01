@@ -7,7 +7,7 @@ import { isAdminShopPreview } from '@/lib/adminShopPreview';
 import { AnnouncementBar } from '@/components/layout/AnnouncementBar';
 import { Header } from '@/components/layout/Header';
 import { HeroSection } from '@/components/home/HeroSection';
-import { ClassPicker } from '@/components/home/ClassPicker';
+import { CategoryPicker } from '@/components/home/CategoryPicker';
 import { ProductGrid } from '@/components/home/ProductGrid';
 import { WhyChoose } from '@/components/home/WhyChoose';
 import { FAQSection } from '@/components/home/FAQSection';
@@ -28,8 +28,6 @@ export default function Home() {
     }
   }, [user, router]);
 
-
-
   // Deep links like /#products or /#why
   useEffect(() => {
     const hash = window.location.hash.replace('#', '');
@@ -40,23 +38,23 @@ export default function Home() {
     return () => clearTimeout(t);
   }, []);
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://blessingpowerguide.in';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vrmenswear.in';
 
   const organizationSchema = {
     '@context': 'https://schema.org',
-    '@type': 'EducationalOrganization',
-    name: 'Blessing Power Guide',
-    legalName: 'BLESSING PATHWAY EDUCATION (OPC) PRIVATE LIMITED',
+    '@type': 'ClothingStore',
+    name: "VR Men's Wear",
+    legalName: "VR MEN'S WEAR",
     url: siteUrl,
     logo: `${siteUrl}/logo.png`,
     description:
-      'Tamil Nadu State Board & CBSE 6th to 12th standard exam preparation guides and educational books.',
+      "Premium Men's Clothing Store — Shirts, T-Shirts, Trousers, Kurtas & 3-in-1 Combo Packs with dynamic per-size pricing and doorstep delivery.",
     address: {
       '@type': 'PostalAddress',
-      streetAddress: 'No.12, Ganesh Apartment, Trust Square St, Nammalwarpet, Ayanavaram',
+      streetAddress: 'Shop No. 4, Commercial Complex, Main Bazaar Road, Anna Nagar',
       addressLocality: 'Chennai',
       addressRegion: 'Tamil Nadu',
-      postalCode: '600012',
+      postalCode: '600040',
       addressCountry: 'IN',
     },
     contactPoint: {
@@ -64,15 +62,14 @@ export default function Home() {
       telephone: '+91-9486017820',
       contactType: 'customer service',
       areaServed: 'IN',
-      availableLanguage: ['English', 'Tamil'],
+      availableLanguage: ['English', 'Tamil', 'Hindi'],
     },
-    sameAs: ['https://maps.google.com/?q=Blessing+Tuition+And+Tutorials+Chennai'],
   };
 
   const websiteSchema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'Blessing Power Guide',
+    name: "VR Men's Wear",
     url: siteUrl,
     potentialAction: {
       '@type': 'SearchAction',
@@ -82,7 +79,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 flex flex-col page-mobile-nav">
+    <main className="min-h-screen bg-slate-950 flex flex-col page-mobile-nav">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(organizationSchema) }}
@@ -94,7 +91,7 @@ export default function Home() {
       <AnnouncementBar />
       <Header />
       <HeroSection />
-      <ClassPicker />
+      <CategoryPicker />
       <ProductGrid />
       <PromoSection />
       <HomeCouponsSection />

@@ -47,8 +47,8 @@ const TAB_TITLES: Record<AdminTab, { title: string; subtitle: string }> = {
     subtitle: 'Real-time parcel delivery tracking and ST Courier network synchronization',
   },
   catalog: {
-    title: 'Book Catalog & Stock Inventory',
-    subtitle: 'Manage standard allocations, book pricing, MRP, and stock copy levels',
+    title: 'Apparel Catalog & Size Variants',
+    subtitle: 'Manage clothes, per-size pricing, MRP, multi-photos, and 3-in-1 combo packs',
   },
   coupons: {
     title: 'Coupons & Promo Codes',
@@ -85,7 +85,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
 
   const meta = TAB_TITLES[activeTab] || {
-    title: 'Blessing Power Guide Admin',
+    title: "VR Men's Wear Admin",
     subtitle: 'Store Operations Portal',
   };
 

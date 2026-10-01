@@ -17,66 +17,44 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   variable: '--font-sans',
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://blessingpowerguide.in';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vrmenswear.in';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Blessing Power Guide — Tamil Nadu State Board & CBSE Exam Guides (Class 6-12)',
-    template: '%s | Blessing Power Guide',
+    default: "VR Men's Wear — Premium Fashion, Casual & 3-in-1 Combo Store",
+    template: "%s | VR Men's Wear",
   },
   description:
-    'Official Blessing Power Guide publications for Class 6th to 12th standard students. Tamil Nadu State Board Samacheer Kalvi & CBSE exam preparation guides with fast doorstep delivery via ST Courier.',
+    "Official VR Men's Wear online flagship store. Premium cotton shirts, jeans, tailored trousers, ethnic kurtas & 3-in-1 combo packs with dynamic Flipkart-style size pricing, Razorpay checkout, and express delivery.",
   keywords: [
-    'Blessing Power Guide',
-    'Tamil Nadu State Board guides',
-    'Samacheer Kalvi guides',
-    'Class 10 Tamil guide',
-    'Class 10 Maths guide',
-    'Class 12 Physics guide Tamil Nadu',
-    'Class 12 Chemistry guide',
-    'CBSE study guides Tamil Nadu',
-    'Blessing Tuition and Tutorials Chennai',
-    'school guide books online buy',
+    "VR Men's Wear",
+    "VR Mens Wear",
+    "Men's clothing store Chennai",
+    'Pure cotton shirts for men',
+    '3 in 1 combo pack shirts',
+    'Stretch chinos and trousers',
+    'Mens ethnic kurtas',
+    'Menswear online buy India',
   ],
-  authors: [{ name: 'BLESSING PATHWAY EDUCATION (OPC) PRIVATE LIMITED' }],
-  creator: 'Blessing Power Guide',
-  publisher: 'BLESSING PATHWAY EDUCATION (OPC) PRIVATE LIMITED',
+  authors: [{ name: "VR MEN'S WEAR" }],
+  creator: "VR Men's Wear",
+  publisher: "VR MEN'S WEAR",
   manifest: '/manifest.webmanifest',
-  icons: {
-    icon: [
-      { url: '/favicon-48x48.png?v=20260921', sizes: '48x48', type: 'image/png' },
-      { url: '/favicon.ico?v=20260921', sizes: 'any' },
-      { url: '/icon.png?v=20260921', sizes: '192x192', type: 'image/png' },
-      { url: '/logo.png?v=20260921', sizes: '512x512', type: 'image/png' },
-    ],
-    shortcut: ['/favicon-48x48.png?v=20260921', '/favicon.ico?v=20260921'],
-    apple: [{ url: '/apple-touch-icon.png?v=20260921', sizes: '180x180', type: 'image/png' }],
-  },
   openGraph: {
-    title: 'Blessing Power Guide — Tamil Nadu State Board & CBSE Exam Guides (Class 6-12)',
+    title: "VR Men's Wear — Premium Fashion & 3-in-1 Value Combos",
     description:
-      'High-scoring study guides and question banks for 6th to 12th standard students. Fast doorstep courier delivery across Tamil Nadu & South India.',
+      'Curated menswear crafted for the modern gentleman with dynamic sizing, premium fabrics, and express doorstep delivery.',
     url: siteUrl,
-    siteName: 'Blessing Power Guide',
-    images: [
-      {
-        url: `${siteUrl}/bpg-og-emblem.png?v=20260921`,
-        width: 512,
-        height: 512,
-        alt: 'Blessing Power Guide Publications — Learn • Grow • Excel',
-        type: 'image/png',
-      },
-    ],
+    siteName: "VR Men's Wear",
     locale: 'en_IN',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'Blessing Power Guide — Tamil Nadu State Board & CBSE Exam Guides',
+    title: "VR Men's Wear — Premium Men's Apparel",
     description:
-      'Quality guides for better preparation and brighter results for 6th to 12th standard students.',
-    images: [`${siteUrl}/bpg-og-emblem.png?v=20260921`],
+      'Discover breathable pure cotton shirts, stretch chinos, modern kurtas, and high-value 3-in-1 combo packs.',
   },
   alternates: {
     canonical: siteUrl,
@@ -88,7 +66,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: 'cover' as const,
-  themeColor: '#0044AA',
+  themeColor: '#0B0F19',
 };
 
 export default function RootLayout({
@@ -98,7 +76,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${outfit.variable} ${plusJakartaSans.variable} antialiased`} suppressHydrationWarning>
+      <body className={`${outfit.variable} ${plusJakartaSans.variable} antialiased bg-slate-950 text-slate-100`} suppressHydrationWarning>
         <StoreProvider>
           <ClientChrome>{children}</ClientChrome>
         </StoreProvider>
@@ -110,8 +88,6 @@ export default function RootLayout({
                   try {
                     var msg = (e && e.message) || '';
                     var target = e && e.target;
-                    var src = (target && target.src) || '';
-                    
                     var isChunkErr = typeof msg === 'string' && (
                       msg.indexOf('Loading chunk') !== -1 ||
                       msg.indexOf('ChunkLoadError') !== -1 ||
@@ -120,14 +96,11 @@ export default function RootLayout({
 
                     if (isChunkErr) {
                       var now = Date.now();
-                      var lastReload = parseInt(sessionStorage.getItem('bpg_last_chunk_reload') || '0', 10);
-                      // Strict throttle: reload at most once every 30 seconds to prevent infinite reload loops
+                      var lastReload = parseInt(sessionStorage.getItem('vr_last_chunk_reload') || '0', 10);
                       if (now - lastReload > 30000) {
-                        sessionStorage.setItem('bpg_last_chunk_reload', String(now));
+                        sessionStorage.setItem('vr_last_chunk_reload', String(now));
                         console.warn('New deployment detected — reloading once for latest bundle...');
                         window.location.reload();
-                      } else {
-                        console.warn('Stale asset reload throttled to avoid infinite loop.');
                       }
                     }
                   } catch (err) {}

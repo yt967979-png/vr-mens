@@ -37,7 +37,7 @@ export default function GlobalError({
               marginBottom: 16,
             }}
           >
-            Blessing Power Guide
+            VR Men's Wear
           </p>
           <h1 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 10px' }}>
             Temporary issue

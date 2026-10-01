@@ -102,9 +102,9 @@ export async function register() {
         });
 
         await transporter.sendMail({
-          from: `"BLESSING ALERT SYSTEM" <${gmailUser}>`,
+          from: `"VR MEN'S WEAR ALERT" <${gmailUser}>`,
           to: adminEmail,
-          subject: `🚨 ALERT: Server Issue Detected on Blessing Power Guide (${errorType})`,
+          subject: `🚨 ALERT: Server Issue Detected on VR Men's Wear (${errorType})`,
           html: `
             <div style="font-family: Arial, sans-serif; padding: 20px; border: 2px solid #ef4444; border-radius: 8px;">
               <h2 style="color: #dc2626;">🚨 Server Error Alert</h2>

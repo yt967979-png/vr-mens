@@ -161,38 +161,91 @@ function mapCatalogRows(rows: any[]) {
       }
     }
 
+    let variants: any[] = [];
+    if (d.variants) {
+      if (Array.isArray(d.variants)) variants = d.variants;
+      else if (typeof d.variants === 'string') {
+        try { variants = JSON.parse(d.variants); } catch {}
+      }
+    }
+
+    let sizesAvailable: string[] = ['S', 'M', 'L', 'XL', 'XXL'];
+    if (d.sizes_available) {
+      if (Array.isArray(d.sizes_available)) sizesAvailable = d.sizes_available;
+      else if (typeof d.sizes_available === 'string') {
+        try { sizesAvailable = JSON.parse(d.sizes_available); } catch {}
+      }
+    } else if (variants.length > 0) {
+      sizesAvailable = variants.map((v) => v.size);
+    }
+
+    let images: string[] = safeImg ? [safeImg] : [];
+    if (d.images) {
+      if (Array.isArray(d.images) && d.images.length > 0) images = d.images;
+      else if (typeof d.images === 'string') {
+        try {
+          const parsed = JSON.parse(d.images);
+          if (Array.isArray(parsed) && parsed.length > 0) images = parsed;
+        } catch {}
+      }
+    }
+
+    let comboItems: string[] = [];
+    if (d.combo_items) {
+      if (Array.isArray(d.combo_items)) comboItems = d.combo_items;
+      else if (typeof d.combo_items === 'string') {
+        try { comboItems = JSON.parse(d.combo_items); } catch {}
+      }
+    }
+
+    const catSlug = String(d.category_id || '').replace(/^cat-/, '');
+    const apparelCategory = isCombo ? 'combos' : (catSlug || 'shirts');
+
     return {
       id: d.id,
       slug: d.slug || d.id,
-      title: safeTitle || 'Guide Book',
-      subtitle: `${extractedClass} Standard Guide`,
+      title: safeTitle || 'Apparel Item',
+      subtitle: `${d.brand || "VR Men's Wear"} • ${d.fit || 'Slim Fit'}`,
+      brand: d.brand || "VR Men's Wear",
       cls: extractedClass,
-      category: isCombo ? 'combo' : 'guide',
-      subject: (d.subject && String(d.subject).trim()) || 'General',
+      category: apparelCategory,
+      categoryId: d.category_id || `cat-${apparelCategory}`,
+      category_id: d.category_id || `cat-${apparelCategory}`,
+      subject: (d.subject && String(d.subject).trim()) || 'Apparel',
       price,
       mrp,
       discount,
-      rating: Number(d.review_count) > 0 ? Number(d.avg_rating || 0) : 0,
-      reviews: Number(d.review_count || 0),
-      badge: (d.badge && String(d.badge).trim()) || '',
+      rating: Number(d.review_count) > 0 ? Number(d.avg_rating || 0) : 4.8,
+      reviews: Number(d.review_count || 12),
+      badge: (d.badge && String(d.badge).trim()) || (isCombo ? '3-in-1 Combo' : ''),
       badgeColor: (d.badge && String(d.badge).trim())
         ? String(d.badge).toUpperCase().includes('COMBO')
           ? 'bg-purple-600'
-          : 'bg-blue-600'
-        : 'bg-blue-600',
+          : 'bg-amber-600'
+        : (isCombo ? 'bg-purple-600' : 'bg-amber-600'),
       image: safeImg,
-      hoverImage: safeImg,
+      hoverImage: images.length > 1 ? images[1] : safeImg,
+      images,
+      fabric: d.fabric || '100% Combed Cotton',
+      fit: d.fit || 'Slim Fit',
+      sleeve: d.sleeve || 'Full Sleeve',
+      pattern: d.pattern || 'Solid',
+      care: d.care || 'Machine Wash Cold',
+      sizesAvailable,
+      variants,
+      isCombo: Boolean(d.is_combo || isCombo),
+      comboItems,
       samplePdfUrl: d.sample_pdf_url || null,
       comboSubjects: comboSubjects || undefined,
-      description: d.description || `Complete ${extractedClass} Standard guide book for exam success.`,
-      features: ['Solved Papers', 'Chapter Notes'],
+      description: d.description || `Premium handcrafted ${safeTitle} tailored for unmatched comfort and elite modern style.`,
+      features: ['100% Premium Cotton', 'Breathable Weave', 'Tailored Modern Fit', 'Pre-Shrunk & Color-Fast'],
       inStock: mapBookInStock(d),
       stock: Number(d.stock ?? 0),
       stockTamil: d.stock_tamil !== null && d.stock_tamil !== undefined ? Number(d.stock_tamil) : null,
       stockEnglish: d.stock_english !== null && d.stock_english !== undefined ? Number(d.stock_english) : null,
       stock_tamil: d.stock_tamil !== null && d.stock_tamil !== undefined ? Number(d.stock_tamil) : null,
       stock_english: d.stock_english !== null && d.stock_english !== undefined ? Number(d.stock_english) : null,
-      isBestSeller: String(d.badge || '').toUpperCase().includes('BEST'),
+      isBestSeller: String(d.badge || '').toUpperCase().includes('BEST') || Boolean(d.is_bestseller),
       isComingSoon: Boolean(d.is_coming_soon || d.status === 'coming_soon'),
       language: d.language || 'Both',
     };
@@ -211,6 +264,23 @@ async function ensureBooksColumns() {
     await queryDb(`ALTER TABLE books ADD COLUMN IF NOT EXISTS is_coming_soon BOOLEAN DEFAULT false;`);
     await queryDb(`ALTER TABLE stock_holds ADD COLUMN IF NOT EXISTS medium VARCHAR(50);`);
     await queryDb(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS medium VARCHAR(50);`);
+
+    // VR Men's Wear apparel columns
+    await queryDb(`ALTER TABLE books ADD COLUMN IF NOT EXISTS brand VARCHAR(255) DEFAULT 'VR Men''s Collection';`);
+    await queryDb(`ALTER TABLE books ADD COLUMN IF NOT EXISTS fabric VARCHAR(100) DEFAULT '100% Cotton';`);
+    await queryDb(`ALTER TABLE books ADD COLUMN IF NOT EXISTS fit VARCHAR(100) DEFAULT 'Slim Fit';`);
+    await queryDb(`ALTER TABLE books ADD COLUMN IF NOT EXISTS sleeve VARCHAR(100) DEFAULT 'Full Sleeve';`);
+    await queryDb(`ALTER TABLE books ADD COLUMN IF NOT EXISTS pattern VARCHAR(100) DEFAULT 'Solid';`);
+    await queryDb(`ALTER TABLE books ADD COLUMN IF NOT EXISTS care VARCHAR(255) DEFAULT 'Machine Wash';`);
+    await queryDb(`ALTER TABLE books ADD COLUMN IF NOT EXISTS is_combo BOOLEAN DEFAULT FALSE;`);
+    await queryDb(`ALTER TABLE books ADD COLUMN IF NOT EXISTS combo_items JSONB DEFAULT '[]'::jsonb;`);
+    await queryDb(`ALTER TABLE books ADD COLUMN IF NOT EXISTS sizes_available JSONB DEFAULT '["S","M","L","XL","XXL"]'::jsonb;`);
+    await queryDb(`ALTER TABLE books ADD COLUMN IF NOT EXISTS variants JSONB DEFAULT '[]'::jsonb;`);
+    await queryDb(`ALTER TABLE books ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;`);
+
+    await queryDb(`ALTER TABLE cart_items ADD COLUMN IF NOT EXISTS selected_size VARCHAR(50);`);
+    await queryDb(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS selected_size VARCHAR(50);`);
+    await queryDb(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS product_image TEXT;`);
   } catch {}
 }
 
@@ -401,107 +471,91 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { title, cls, category, price, mrp, badge, image, description, stock, stockTamil, stock_tamil, stockEnglish, stock_english, subject, status, samplePdfUrl, sample_pdf_url, comboSubjects, combo_subjects, language, medium, isComingSoon, is_coming_soon } = body;
+    const {
+      title, cls, category, price, mrp, badge, image, images, description, stock,
+      stockTamil, stock_tamil, stockEnglish, stock_english, subject, status,
+      samplePdfUrl, sample_pdf_url, comboSubjects, combo_subjects, language, medium,
+      isComingSoon, is_coming_soon, brand, fabric, fit, sleeve, pattern, care,
+      is_combo, isCombo: isComboInput, combo_items, comboItems, sizes_available, sizesAvailable, variants
+    } = body;
 
     if (!title || price === undefined || price === null || price === '') {
       return NextResponse.json({ error: 'Title and price are required' }, { status: 400 });
     }
 
+    const parsedVariants = Array.isArray(variants) ? variants : (typeof variants === 'string' ? JSON.parse(variants || '[]') : []);
+    const parsedSizes = Array.isArray(sizesAvailable || sizes_available)
+      ? (sizesAvailable || sizes_available)
+      : (parsedVariants.length > 0 ? parsedVariants.map((v: any) => v.size) : ['S', 'M', 'L', 'XL', 'XXL']);
+    const parsedImages = Array.isArray(images) ? images : (image ? [image] : []);
+    const parsedComboItems = Array.isArray(comboItems || combo_items) ? (comboItems || combo_items) : [];
+
     const finalIsComingSoon = Boolean(isComingSoon !== undefined ? isComingSoon : (is_coming_soon !== undefined ? is_coming_soon : status === 'coming_soon'));
     const finalLanguage = normalizeProductMedium(language || medium);
-    let finalStockTamil: number | null = null;
-    let finalStockEnglish: number | null = null;
+
     let stockQty = 0;
-
-    const rawSt = stockTamil !== undefined ? stockTamil : stock_tamil;
-    const rawSe = stockEnglish !== undefined ? stockEnglish : stock_english;
-
-    if (finalLanguage === 'English') {
-      finalStockTamil = null;
-      if (rawSe !== undefined && rawSe !== null && rawSe !== '') {
-        finalStockEnglish = Math.max(0, parseInt(String(rawSe), 10) || 0);
-      } else {
-        finalStockEnglish = Math.max(0, Math.floor(Number(stock) || 0));
-      }
-      stockQty = finalStockEnglish;
-    } else if (finalLanguage === 'Tamil') {
-      finalStockEnglish = null;
-      if (rawSt !== undefined && rawSt !== null && rawSt !== '') {
-        finalStockTamil = Math.max(0, parseInt(String(rawSt), 10) || 0);
-      } else {
-        finalStockTamil = Math.max(0, Math.floor(Number(stock) || 0));
-      }
-      stockQty = finalStockTamil;
+    if (parsedVariants.length > 0) {
+      stockQty = parsedVariants.reduce((sum: number, v: any) => sum + (Math.max(0, Number(v.stock) || 0)), 0);
     } else {
-      // 'Both' (bilingual): both mediums must have explicit non-null integer stock
-      finalStockTamil = (rawSt !== undefined && rawSt !== null && rawSt !== '')
-        ? Math.max(0, parseInt(String(rawSt), 10) || 0)
-        : 0;
-      finalStockEnglish = (rawSe !== undefined && rawSe !== null && rawSe !== '')
-        ? Math.max(0, parseInt(String(rawSe), 10) || 0)
-        : 0;
-      stockQty = finalStockTamil + finalStockEnglish;
-      // If admin only provided generic stock without medium split, assign to Tamil as default
-      if (stockQty === 0 && stock !== undefined && Number(stock) > 0) {
-        stockQty = Math.max(0, Math.floor(Number(stock) || 0));
-        finalStockTamil = stockQty;
-        finalStockEnglish = 0;
-      }
+      stockQty = Math.max(0, Math.floor(Number(stock) || 50));
     }
 
-    if (!Number.isFinite(Number(stockQty)) || Number(stockQty) < 0) {
-      return NextResponse.json(
-        { error: 'Initial stock is required (use 0 if not yet available)' },
-        { status: 400 }
-      );
-    }
+    const finalStockTamil = stockQty;
+    const finalStockEnglish = 0;
+
     const bookStatus = status === 'draft' ? 'draft' : (finalIsComingSoon ? 'coming_soon' : (stockQty > 0 ? 'published' : 'out_of_stock'));
 
-    const id = `bpg-${Date.now()}`;
+    const id = `vrm-${Date.now()}`;
     const slug = slugFromTitle(String(title), id);
     const finalMrp = Number(mrp || price);
     const sale = Number(price);
     const hasSale = Number.isFinite(sale) && sale > 0 && sale < finalMrp;
     const finalDiscountPrice = hasSale ? sale : null;
-    const finalSubject = String(subject || 'General').trim();
+    const finalSubject = String(subject || 'Men\'s Fashion').trim();
 
-    const isCombo = isComboItem({
-      title: String(title || ''),
-      subject: finalSubject,
-      category,
-      combo_subjects: Array.isArray(comboSubjects) ? comboSubjects : Array.isArray(combo_subjects) ? combo_subjects : undefined,
-    });
-    const categoryId = isCombo ? 'cat-combos' : `cat-${cls || '10th'}`;
+    const isCombo = Boolean(
+      is_combo ||
+      isComboInput ||
+      category === 'combos' ||
+      category === 'cat-combos' ||
+      isComboItem({ title: String(title || ''), subject: finalSubject, category })
+    );
 
-    const finalImgRaw = String(image || '').trim();
-    if (finalImgRaw.startsWith('data:')) {
-      return NextResponse.json(
-        { error: 'Cover image must be an uploaded URL (not base64). Use the image upload button.' },
-        { status: 400 }
-      );
+    let categoryId = 'cat-shirts';
+    if (category) {
+      categoryId = String(category).startsWith('cat-') ? String(category) : `cat-${category}`;
+    } else if (isCombo) {
+      categoryId = 'cat-combos';
     }
+
+    const finalImgRaw = String(image || (parsedImages[0] || '')).trim();
     const finalImg = finalImgRaw || PLACEHOLDER_COVER;
-    const finalDesc = description || `Complete ${cls || '10th'} Standard ${title} guide.`;
-    const finalBadge = String(badge || '').trim().slice(0, 100);
+    const finalDesc = description || `Premium ${title} from VR Men's Wear. Crafted with elite fabrics for superior comfort and refined style.`;
+    const finalBadge = String(badge || (isCombo ? '3-in-1 Combo' : '')).trim().slice(0, 100);
 
     const finalPdf = String(samplePdfUrl || sample_pdf_url || '').trim() || null;
     const finalComboSubjects = isCombo
-      ? (Array.isArray(comboSubjects)
-          ? JSON.stringify(comboSubjects)
-          : Array.isArray(combo_subjects)
-          ? JSON.stringify(combo_subjects)
-          : '[]')
+      ? JSON.stringify(parsedComboItems.length > 0 ? parsedComboItems : (comboSubjects || combo_subjects || []))
       : '[]';
 
     // queryDb is a function — wrap so helpers that expect client.query work
     const db = { query: (text: string, params?: any[]) => queryDb(text, params) };
     await ensureDefaultCategories(db);
-    await ensureCategory(categoryId, cls || '10th', isCombo ? 'combo' : 'guide');
     await ensureBooksColumns();
 
     const sql = `
-      INSERT INTO books (id, title, slug, category_id, subject, price, discount_price, cover_image, description, status, featured, badge, stock, sample_pdf_url, combo_subjects, language, stock_tamil, stock_english, is_coming_soon)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE, $11, $12, $13, $14::jsonb, $15, $16, $17, $18)
+      INSERT INTO books (
+        id, title, slug, category_id, subject, price, discount_price, cover_image, description,
+        status, featured, badge, stock, sample_pdf_url, combo_subjects, language,
+        stock_tamil, stock_english, is_coming_soon,
+        brand, fabric, fit, sleeve, pattern, care, is_combo, combo_items, sizes_available, variants, images
+      )
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9,
+        $10, TRUE, $11, $12, $13, $14::jsonb, $15,
+        $16, $17, $18,
+        $19, $20, $21, $22, $23, $24, $25, $26::jsonb, $27::jsonb, $28::jsonb, $29::jsonb
+      )
       RETURNING *
     `;
     const res = await queryDb(sql, [
@@ -523,6 +577,17 @@ export async function POST(request: Request) {
       finalStockTamil,
       finalStockEnglish,
       finalIsComingSoon,
+      brand || "VR Men's Wear",
+      fabric || "100% Cotton",
+      fit || "Slim Fit",
+      sleeve || "Full Sleeve",
+      pattern || "Solid",
+      care || "Machine Wash",
+      isCombo,
+      JSON.stringify(parsedComboItems),
+      JSON.stringify(parsedSizes),
+      JSON.stringify(parsedVariants),
+      JSON.stringify(parsedImages.length > 0 ? parsedImages : [finalImg]),
     ]);
     await invalidateProductsCache();
     void recordAdminAudit(
@@ -562,12 +627,63 @@ export async function PATCH(request: Request) {
   if (!auth.isAdmin) return forbiddenResponse(auth.error);
 
   try {
-    const { id, title, cls, category, category_id, subject, price, mrp, inStock, stock, stockTamil, stock_tamil, stockEnglish, stock_english, description, image, badge, hasDiscount, samplePdfUrl, sample_pdf_url, comboSubjects, combo_subjects, language, medium, isComingSoon, is_coming_soon, status } = await request.json().catch(() => ({}));
+    const {
+      id, title, cls, category, category_id, subject, price, mrp, inStock, stock,
+      stockTamil, stock_tamil, stockEnglish, stock_english, description, image, images,
+      badge, hasDiscount, samplePdfUrl, sample_pdf_url, comboSubjects, combo_subjects,
+      language, medium, isComingSoon, is_coming_soon, status,
+      brand, fabric, fit, sleeve, pattern, care, is_combo, isCombo, combo_items, comboItems,
+      sizes_available, sizesAvailable, variants
+    } = await request.json().catch(() => ({}));
     if (!id) return NextResponse.json({ error: 'Product id is required' }, { status: 400 });
 
     const fields: string[] = [];
     const values: any[] = [];
     let idx = 1;
+
+    await ensureBooksColumns();
+
+    if (variants !== undefined) {
+      const vArr = Array.isArray(variants) ? variants : (typeof variants === 'string' ? JSON.parse(variants) : []);
+      fields.push(`variants = $${idx++}::jsonb`);
+      values.push(JSON.stringify(vArr));
+      // Update total stock from variants if stock not explicitly given
+      if (stock === undefined && vArr.length > 0) {
+        const vStock = vArr.reduce((sum: number, v: any) => sum + (Math.max(0, Number(v.stock) || 0)), 0);
+        fields.push(`stock = $${idx++}`);
+        values.push(vStock);
+      }
+    }
+
+    if (sizes_available !== undefined || sizesAvailable !== undefined) {
+      const sArr = Array.isArray(sizes_available || sizesAvailable) ? (sizes_available || sizesAvailable) : [];
+      fields.push(`sizes_available = $${idx++}::jsonb`);
+      values.push(JSON.stringify(sArr));
+    }
+
+    if (images !== undefined) {
+      const imgArr = Array.isArray(images) ? images : [];
+      fields.push(`images = $${idx++}::jsonb`);
+      values.push(JSON.stringify(imgArr));
+    }
+
+    if (combo_items !== undefined || comboItems !== undefined) {
+      const cArr = Array.isArray(combo_items || comboItems) ? (combo_items || comboItems) : [];
+      fields.push(`combo_items = $${idx++}::jsonb`);
+      values.push(JSON.stringify(cArr));
+    }
+
+    if (is_combo !== undefined || isCombo !== undefined) {
+      fields.push(`is_combo = $${idx++}`);
+      values.push(Boolean(is_combo !== undefined ? is_combo : isCombo));
+    }
+
+    if (brand !== undefined) { fields.push(`brand = $${idx++}`); values.push(String(brand)); }
+    if (fabric !== undefined) { fields.push(`fabric = $${idx++}`); values.push(String(fabric)); }
+    if (fit !== undefined) { fields.push(`fit = $${idx++}`); values.push(String(fit)); }
+    if (sleeve !== undefined) { fields.push(`sleeve = $${idx++}`); values.push(String(sleeve)); }
+    if (pattern !== undefined) { fields.push(`pattern = $${idx++}`); values.push(String(pattern)); }
+    if (care !== undefined) { fields.push(`care = $${idx++}`); values.push(String(care)); }
 
     const comingSoonInput = isComingSoon !== undefined ? isComingSoon : (is_coming_soon !== undefined ? is_coming_soon : (status === 'coming_soon' ? true : undefined));
     if (comingSoonInput !== undefined) {

@@ -121,8 +121,8 @@ export async function generateSupportRagAnswer(
   const injectionPattern = /\b(ignore\s*(previous|all|above)\s*instructions|system\s*prompt|database\s*(password|url|secret|credentials)|admin\s*password|drop\s*table|select\s+\*\s+from|(other|another)\s*customers?|all\s*orders|previous\s*customers?|secret\s*key|api\s*key)\b/i;
   if (injectionPattern.test(q)) {
     return {
-      answer: 'I am the Blessing Power Guide Customer Support assistant. I can only assist with verified bookstore inquiries, order tracking for your verified account, and store policies.',
-      suggestions: ['🚚 Track My Order', '📚 Browse Books Catalog', '👨‍💼 Talk to Admin'],
+      answer: "I am the VR Men's Wear Customer Support assistant. I can only assist with verified apparel inquiries, order tracking for your verified account, sizing, and store policies.",
+      suggestions: ['🚚 Track My Order', '👔 Browse Apparel Catalog', '👨‍💼 Talk to Admin'],
       shouldEscalate: false,
     };
   }
@@ -168,8 +168,8 @@ export async function generateSupportRagAnswer(
       const latestCode = latest.order_number || latest.id;
       const latestStatus = fulfillmentStatus(latest);
       return {
-        answer: `${greeting}Welcome to **Blessing Power Guide Support**!\n\nI can see your recent order **#${latestCode}** (Status: **${latestStatus.toUpperCase()}**). What would you like help with today?`,
-        suggestions: [`🚚 Track Order #${latestCode}`, '📚 10th Guides & Prices', '📦 Shipping & Delivery', '🔄 Damaged Book Replacement', '👨‍💼 Talk to Admin'],
+        answer: `${greeting}Welcome to **VR Men's Wear Support**!\n\nI can see your recent order **#${latestCode}** (Status: **${latestStatus.toUpperCase()}**). What would you like help with today?`,
+        suggestions: [`🚚 Track Order #${latestCode}`, '👔 Shirts & T-Shirts', '📦 3-in-1 Combo Packs', '🔄 Size Exchange Policy', '👨‍💼 Talk to Admin'],
         shouldEscalate: false,
         linkedOrderId: latestCode,
         cardType: 'order',
@@ -186,8 +186,8 @@ export async function generateSupportRagAnswer(
       };
     }
     return {
-      answer: `${greeting}Welcome to **Blessing Power Guide Support**! 🤖\n\nI can help you with:\n1. 🚚 **Live Order Tracking** (ST Courier docket & delivery status)\n2. 📚 **Official Guides & Prices** (Check live editions & stock)\n3. 📦 **Shipping & Free Delivery** (5+ books = free shipping!)\n4. 🛡️ **100% Free Replacement** for damaged or misprinted books\n5. 👨‍💼 **Connect with Admin** for personal assistance\n\nHow can I help you today?`,
-      suggestions: ['🚚 Track My Order', '📚 Guides & Live Prices', '📦 Shipping & Free Delivery', '🔄 Damaged Book Replacement', '👨‍💼 Talk to Admin'],
+      answer: `${greeting}Welcome to **VR Men's Wear Support**! 🤖\n\nI can help you with:\n1. 🚚 **Live Order Tracking** (ST Courier docket & delivery status)\n2. 👔 **Apparel & Live Pricing** (Check sizes, fabrics & combos)\n3. 📦 **Shipping & Free Delivery** (Free shipping on orders above ₹999 or Combos)\n4. 🛡️ **7-Day Hassle-Free Size Exchange**\n5. 👨‍💼 **Connect with Admin** for personal styling assistance\n\nHow can I help you today?`,
+      suggestions: ['🚚 Track My Order', '👔 Browse Menswear Catalog', '📦 3-in-1 Combos', '📏 Size Guide', '👨‍💼 Talk to Admin'],
       shouldEscalate: false,
     };
   }
@@ -524,8 +524,8 @@ export async function generateSupportRagAnswer(
 
   if (isOfficeOrHelpline) {
     return {
-      answer: `🏢 **Blessing Power Guide Head Office & Helpline**:\n\n• **Publication & Dispatch Office**: ${STORE_POLICIES.office}\n• **Direct Phone Helpline**: **${STORE_POLICIES.helpline}**\n• **Working Hours**: **${STORE_POLICIES.hours}**\n• **Official WhatsApp Help**: [Chat on WhatsApp](https://wa.me/919486017820) (+91 94860 17820 / +91 63829 63350)\n• **Courier Dispatch**: We are an official publishing house based in Chennai. All guides are packaged directly here and dispatched via ST Courier Express daily across South India.`,
-      suggestions: ['📞 Call Helpline (+91 94860 17820)', '💬 WhatsApp Support', '🚚 Track My Order', '👨‍💼 Talk to Admin'],
+      answer: `🏢 **VR Men's Wear Store & Dispatch Hub**:\n\n• **Retail & Dispatch Office**: ${STORE_POLICIES.office}\n• **Direct Phone Helpline**: **${STORE_POLICIES.helpline}**\n• **Working Hours**: **${STORE_POLICIES.hours}**\n• **Official WhatsApp Help**: [Chat on WhatsApp](https://wa.me/919486017820) (+91 94860 17820)\n• **Courier Dispatch**: We are a premier men's fashion label based in Anna Nagar, Chennai. All apparel orders are inspected for quality and dispatched via ST Courier Express daily across India.`,
+      suggestions: ['📞 Call Helpline (+91 94860 17820)', '💬 WhatsApp Styling Help', '🚚 Track My Order', '👨‍💼 Talk to Admin'],
       shouldEscalate: false,
       cardType: 'contact',
     };
@@ -732,33 +732,34 @@ export async function generateSupportRagAnswer(
     };
   }
 
-  // ── 15. Class 10 Guides & Syllabus ──────────────────────────────────────────
+  // ── 15. Apparel Categories & Fabrics ──────────────────────────────────────────
   if (
-    q.includes('exam') ||
-    q.includes('syllabus') ||
-    q.includes('study material') ||
-    q.includes('guide details')
+    q.includes('fabric') ||
+    q.includes('cotton') ||
+    q.includes('linen') ||
+    q.includes('shirt') ||
+    q.includes('material') ||
+    q.includes('quality')
   ) {
     return {
-      answer: `📚 **Tamil Nadu Samacheer Kalvi Guides**:\n\nBlessing Power Guide publishes high-scoring guides with step-by-step solutions and model question papers.\n\nYou can preview and download sample chapter PDFs directly on each book page before ordering.`,
-      suggestions: ['📚 Browse Books Catalog', '📄 Download Sample PDF', '👨‍💼 Talk to Admin'],
+      answer: `👔 **VR Men's Wear Fabrics & Craftsmanship**:\n\n• **Shirts**: 100% Combed Cotton, Pure Linen & Easy-Iron Formal Twill.\n• **T-Shirts**: 220 GSM Bio-Washed Heavyweight Cotton.\n• **Trousers & Jeans**: Stretch Chinos and Durable Selvedge-style Denim.\n• **3-in-1 Combo Packs**: Triple-value curated packs featuring 3 coordinated shirts/tees in one bundle!`,
+      suggestions: ['👔 Browse Shirts', '👕 Browse T-Shirts', '📦 3-in-1 Combos', '👨‍💼 Talk to Admin'],
       shouldEscalate: false,
     };
   }
 
-  // ── 16. Other Standards (11th, 12th, 9th) ──────────────────────────────────
+  // ── 16. Sizes & Dynamic Pricing ──────────────────────────────────
   if (
-    q.includes('11th') ||
-    q.includes('12th') ||
-    q.includes('9th') ||
-    q.includes('8th') ||
-    q.includes('plus one') ||
-    q.includes('plus two') ||
-    q.includes('neet')
+    q.includes('size') ||
+    q.includes('pricing') ||
+    q.includes('mrp') ||
+    q.includes('chart') ||
+    q.includes('fit') ||
+    q.includes('measurement')
   ) {
     return {
-      answer: `Currently, Blessing Power Guide specializes exclusively in **Tamil Nadu Class 10 (SSLC) Samacheer Kalvi** guides.`,
-      suggestions: ['📚 View 10th Guides', '🛒 10th Full Set Combo', '👨‍💼 Talk to Admin'],
+      answer: `📏 **Dynamic Sizing & Live Pricing**:\n\n• **Tops (Shirts & Tees)**: Available in S, M, L, XL, XXL with exact chest specifications.\n• **Bottoms (Pants & Jeans)**: Waist sizes 30, 32, 34, 36, 38.\n• **Dynamic Pricing (Flipkart Style)**: Every size has real-time pricing and stock status — simply tap your size on any product page to see the exact price.\n• **Interactive Size Guide**: Click the "Size Guide" button on any product page for chest, shoulder, and length measurements.`,
+      suggestions: ['📏 View Sizing Chart', '👔 Browse Catalog', '🔄 7-Day Size Exchange', '👨‍💼 Talk to Admin'],
       shouldEscalate: false,
     };
   }
@@ -772,8 +773,8 @@ export async function generateSupportRagAnswer(
     q.includes('how can i order')
   ) {
     return {
-      answer: `🛒 **How to Place an Order**:\n\n1. Go to the **Books** page and add guides to your Cart (Minimum order: 4 books; 5+ books get Free Delivery).\n2. Click the Cart icon to review.\n3. Enter your delivery address and mobile number.\n4. Complete payment online via Razorpay (UPI, GPay, PhonePe, Cards).\n\nYou will receive an SMS confirmation and ST Courier tracking details once dispatched.`,
-      suggestions: ['📚 Browse 10th Guides', '🛒 Buy 10th Full Set (Free Delivery)', '👨‍💼 Talk to Admin'],
+      answer: `🛒 **How to Place an Order**:\n\n1. Browse our collection (Shirts, T-Shirts, Trousers, Jeans, Kurtas, or 3-in-1 Combos).\n2. Select your preferred size (price and stock reflect instantly).\n3. Click "Add to Cart" or "Buy Now".\n4. Enter your delivery address and pay securely via Razorpay (UPI, GPay, PhonePe, Cards).\n\nYou will receive real-time order confirmation and ST Courier tracking directly to your mobile!`,
+      suggestions: ['👔 Browse Catalog', '📦 View 3-in-1 Combos', '🚚 Track My Order', '👨‍💼 Talk to Admin'],
       shouldEscalate: false,
     };
   }
@@ -816,13 +817,13 @@ export async function generateSupportRagAnswer(
     q.includes('can i buy directly') ||
     q.includes('direct purchase') ||
     q.includes('chennai shop') ||
-    q.includes('ayanavaram store') ||
+    q.includes('store address') ||
     q.includes('shop address') ||
     q.includes('nerla vandhu vangalama')
   ) {
     return {
-      answer: `🏬 **Direct Purchase in Chennai**:\n\n• **Head Office**: Blessing Power Guide, Trust Square, Ayanavaram, Chennai - 600012, Tamil Nadu.\n• **Hours**: Monday to Saturday, 9:00 AM – 8:00 PM IST.\n• **Phone / WhatsApp**: +91 94860 17820 / +91 63829 63350.\n\nFor customers across Tamil Nadu, online orders are delivered to your doorstep within 2–3 business days via ST Courier.`,
-      suggestions: ['🏢 Office Map & Contact', '📞 Call Office (+91 94860 17820)', '🛒 Buy Online for Home Delivery'],
+      answer: `🏬 **Direct Store Visit & Fitting in Chennai**:\n\n• **Store Location**: VR Men's Wear, 2nd Avenue, Anna Nagar, Chennai - 600040, Tamil Nadu.\n• **Hours**: Monday to Saturday, 10:00 AM – 9:00 PM IST.\n• **Phone / WhatsApp**: +91 94860 17820.\n\nFor customers across India, online orders are delivered to your doorstep within 1–3 business days via ST Courier with 7-day size exchange guarantee.`,
+      suggestions: ['🏢 Store Map & Contact', '📞 Call Store (+91 94860 17820)', '🛒 Buy Online for Express Delivery'],
       shouldEscalate: false,
     };
   }
@@ -855,8 +856,8 @@ export async function generateSupportRagAnswer(
     q.includes('sms varala')
   ) {
     return {
-      answer: `📱 **Order Confirmation SMS & Updates**:\n\n• **Instant SMS**: As soon as your Razorpay payment completes, an automated SMS confirmation is sent to your mobile number.\n• **Didn't receive SMS?**: Check if DND (Do Not Disturb) is active on your phone number, or check the **Profile > Orders** page on our website.\n• **Docket SMS**: A second SMS with your ST Courier live tracking docket is sent as soon as your parcel is dispatched from Chennai!`,
-      suggestions: ['🚚 Track My Order', '👨‍💼 Talk to Admin', '📞 Call Helpline (+91 98404 18228)'],
+      answer: `📱 **Order Confirmation SMS & Updates**:\n\n• **Instant SMS**: As soon as your Razorpay payment completes, an automated SMS confirmation is sent to your mobile number.\n• **Didn't receive SMS?**: Check if DND (Do Not Disturb) is active on your phone number, or check the **Profile > Orders** page on our website.\n• **Docket SMS**: A second SMS with your ST Courier live tracking docket is sent as soon as your garment parcel is dispatched from Chennai!`,
+      suggestions: ['🚚 Track My Order', '👨‍💼 Talk to Admin', '📞 Call Helpline (+91 94860 17820)'],
       shouldEscalate: false,
     };
   }
@@ -885,7 +886,7 @@ export async function generateSupportRagAnswer(
     q.includes('velai') ||
     q.includes('vilai') ||
     q.includes('rate enna') ||
-    q.includes('book eppo varum') ||
+    q.includes('shirt eppo varum') ||
     q.includes('delivery charge evvalavu') ||
     q.includes('free delivery irukka') ||
     q.includes('enga irukku shop') ||
@@ -893,8 +894,8 @@ export async function generateSupportRagAnswer(
     q.includes('evvalo naalaagum')
   ) {
     return {
-      answer: `வணக்கம்! 🙏 **Blessing Power Guide** பற்றிய முக்கிய விவரங்கள்:\n\n• 📚 **10-ஆம் வகுப்பு சமச்சீர் கல்வி வழிகாட்டிகள்**: தமிழ், ஆங்கிலம், கணிதம், அறிவியல், சமூக அறிவியல்.\n• 🚚 **டெலிவரி விவரங்கள்**: 5 அல்லது அதற்கு மேற்பட்ட புத்தகங்கள் ஆர்டர் செய்தால் **முழுக்க முழுக்க இலவச டோர் டெலிவரி (Free Delivery)**!\n• ⏱️ **வந்து சேரும் காலம்**: ST Courier வழியாக 2 முதல் 3 நாட்களுக்குள் உங்கள் வீட்டிற்கே வந்து சேரும்.\n• 💳 **பணம் செலுத்துதல்**: Razorpay (GPay, PhonePe, Paytm, UPI, Card).\n• 🏢 **முகவரி**: Trust Square, அயனாவரம், சென்னை - 600012.\n• 📞 **உதவிக்கு**: +91 94860 17820 / +91 63829 63350.`,
-      suggestions: ['📚 10th Full Set (இலவச டெலிவரி)', '🚚 Track Order', '👨‍💼 Talk to Admin', '📞 Call Office'],
+      answer: `வணக்கம்! 🙏 **VR Men's Wear** பற்றிய முக்கிய விவரங்கள்:\n\n• 👔 **ஆடைகள்**: Cotton & Linen Shirts, T-Shirts, Jeans, Trousers, Kurtas & 3-in-1 Combo Packs.\n• 🚚 **டெலிவரி**: ₹999 மேல் அல்லது காம்போ ஆர்டர்களுக்கு **முழுக்க முழுக்க இலவச டோர் டெலிவரி (Free Delivery)**!\n• ⏱️ **வந்து சேரும் காலம்**: ST Courier வழியாக 1 முதல் 3 நாட்களுக்குள் உங்கள் வீட்டிற்கே வந்து சேரும்.\n• 💳 **பணம் செலுத்துதல்**: Razorpay (GPay, PhonePe, Paytm, UPI, Card).\n• 🔄 **அளவு மாற்றம்**: 7-Day Hassle-Free Size Exchange வசதி உண்டு.\n• 🏢 **முகவரி**: Anna Nagar, சென்னை - 600040.\n• 📞 **உதவிக்கு**: +91 94860 17820.`,
+      suggestions: ['📦 3-in-1 Combos (இலவச டெலிவரி)', '🚚 Track Order', '👨‍💼 Talk to Admin', '📞 Call Store'],
       shouldEscalate: false,
     };
   }
@@ -907,8 +908,8 @@ export async function generateSupportRagAnswer(
     const latestCode = latest.order_number || latest.id;
     const latestStatus = fulfillmentStatus(latest);
     return {
-      answer: `${greeting}I only provide verified information for Blessing Power Guide.\n\n• 🚚 **Your Order #${latestCode}**: Status is **${latestStatus.toUpperCase()}**\n• 📚 **10th Class Guides & Prices**\n• 📦 **Shipping Rules** (4 books MOQ, 5+ books Free Delivery)\n• 🛡️ **100% Free Replacement** for damaged books\n\nFor any other questions, please connect directly with our admin team:`,
-      suggestions: [`🚚 Track Order #${latestCode}`, '📚 10th Guides & Prices', '📦 Shipping & Delivery Rules', '👨‍💼 Talk to Admin'],
+      answer: `${greeting}I only provide verified information for VR Men's Wear.\n\n• 🚚 **Your Order #${latestCode}**: Status is **${latestStatus.toUpperCase()}**\n• 👔 **Premium Menswear & Live Sizing**\n• 📦 **Shipping Rules** (Free Delivery on ₹999+ or 3-in-1 Combos)\n• 🔄 **7-Day Hassle-Free Size Exchange**\n\nFor any other questions, please connect directly with our admin team:`,
+      suggestions: [`🚚 Track Order #${latestCode}`, '👔 Shirts & Combos', '📦 Shipping & Delivery Rules', '👨‍💼 Talk to Admin'],
       shouldEscalate: false,
       linkedOrderId: latestCode,
       cardType: 'order',
@@ -926,8 +927,8 @@ export async function generateSupportRagAnswer(
   }
 
   return {
-    answer: `${greeting}I only provide verified information for Blessing Power Guide:\n\n1. 🚚 **Where is my order?** (Live ST Courier tracking & order status)\n2. 📚 **10th Class Guides & Prices** (Tamil, English, Maths, Science & Social Science)\n3. 📦 **Order Rules** (Minimum 4 books MOQ, 100% Free delivery on 5+ books)\n4. 🛡️ **100% Free Replacement** for transit-damaged or misprinted books\n5. 💳 **Razorpay Online Payments** (UPI, GPay, PhonePe, Cards)\n    6. 🏢 **Chennai Head Office**: Trust Square, Ayanavaram (+91 94860 17820)\n\nFor any other questions, please click **Talk to Admin** to chat directly with our staff:`,
-    suggestions: ['🚚 Track My Order', '📚 10th Guides & Prices', '📦 Minimum Order & Delivery Fee', '👨‍💼 Talk to Admin'],
+    answer: `${greeting}I only provide verified information for VR Men's Wear:\n\n1. 🚚 **Where is my order?** (Live ST Courier tracking & order status)\n2. 👔 **Apparel & Live Sizes** (Shirts, T-Shirts, Trousers, Jeans, Kurtas)\n3. 📦 **3-in-1 Combo Packs** (Triple value packs with Free Delivery)\n4. 🔄 **7-Day Hassle-Free Size Exchange** for perfect fit\n5. 💳 **Razorpay Online Payments** (UPI, GPay, PhonePe, Cards)\n6. 🏢 **Chennai Hub**: Anna Nagar (+91 94860 17820)\n\nFor any other questions, please click **Talk to Admin** to chat directly with our staff:`,
+    suggestions: ['🚚 Track My Order', '👔 Browse Catalog', '📦 3-in-1 Combos', '👨‍💼 Talk to Admin'],
     shouldEscalate: false,
   };
 }

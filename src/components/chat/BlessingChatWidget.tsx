@@ -47,9 +47,10 @@ interface Conversation {
 
 const QUICK_SUGGESTIONS = [
   '🚚 Where is my order?',
-  '📚 10th Standard Guides',
-  '📦 What are the shipping charges?',
-  '👨‍💼 Talk to Admin',
+  '👔 Pure Cotton Shirts',
+  '🎁 3-in-1 Combo Pack details',
+  '🔄 7-Day Size Exchange',
+  '👨‍💼 Talk to Stylist',
 ];
 
 const FEEDBACK_TAGS = ['⚡ Quick Solution', '🤝 Friendly Staff', '📦 Order Tracked', '📚 Helpful Details'];
@@ -314,7 +315,7 @@ export const BlessingChatWidget: React.FC = () => {
             {
               id: `ai_${Date.now()}`,
               sender_type: 'AI',
-              sender_name: 'Blessing AI Assistant',
+              sender_name: 'VR Stylist AI Assistant',
               text: data.reply,
               suggestions: data.suggestions || [],
               created_at: new Date().toISOString(),
@@ -546,8 +547,8 @@ export const BlessingChatWidget: React.FC = () => {
                   <div>
                     <h3 className="font-extrabold text-sm sm:text-[15px] flex items-center gap-1.5 text-white tracking-tight">
                       {conversation?.status === 'ACTIVE'
-                        ? `${conversation.assigned_admin_name || 'Staff'} (Blessing Support)`
-                        : 'Blessing Help Desk'}
+                        ? `${conversation.assigned_admin_name || 'Stylist'} (VR Support)`
+                        : "VR Men's Help Desk"}
                     </h3>
                     <p className="text-[10.5px] sm:text-[11px] text-slate-300 flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
@@ -620,7 +621,7 @@ export const BlessingChatWidget: React.FC = () => {
                       👑
                     </span>
                     <span className="font-extrabold text-xs text-[#001b3a]">
-                      Blessing Power Guide
+                      VR Men's Wear
                     </span>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
@@ -629,7 +630,7 @@ export const BlessingChatWidget: React.FC = () => {
                 </div>
 
                 <p className="text-[11.5px] sm:text-xs text-slate-600 leading-relaxed">
-                  Vanakkam! 🙏 How can we help you today? Ask about 10th guides, real-time ST Courier tracking, or click below for instant help:
+                  Vanakkam! 🙏 How can we help you today? Ask about shirts, sizing charts, 3-in-1 combo packs, real-time ST Courier tracking, or click below for instant help:
                 </p>
 
                 {/* Instant 1-Tap Quick Action Cards */}
